@@ -176,13 +176,15 @@ module OrigenLink
         [1, 3].each do |event|
           @cycletiming[tset_key]['drive_event_pins'][event] = []
         end
+        @cycletiming[tset_key]['compare_event_data'][1] = 'data'
         0.step(argarr.length - 2, 2) do |index|
           drive_type = argarr[index + 1]
           pin_name = argarr[index]
           @cycletiming[tset_key]['drive_event_data'][1] = 'data'
-          @cycletiming[tset - key]['drive_event_pins'][1] << @pinmap[pin_name]
-          @cycletiming[tset - key]['drive_event_pins'][3] << @pinmap[pin_name]
-          if drive_type = 'rl'
+          @cycletiming[tset_key]['drive_event_pins'][1] << @pinmap[pin_name]
+          @cycletiming[tset_key]['drive_event_pins'][3] << @pinmap[pin_name]
+          @cycletiming[tset_key]['compare_event_pins'][1] = [@pinmap[pin_name]]
+          if drive_type == 'rl'
             @cycletiming[tset_key]['drive_event_data'][3] = '0'
           else
             @cycletiming[tset_key]['drive_event_data'][3] = '1'
@@ -245,7 +247,6 @@ module OrigenLink
             @cycletiming[tset_key]['compare_event_pins'].delete(event)
           end
         end
-
         'P:'
       end
 
@@ -307,10 +308,11 @@ module OrigenLink
 
         message = ''
         # load pattern cycle data into pin objects
-        @pinmap.each { |p| p.load_pattern_data(args) }
+        @pinmap.each_value { |p| p.load_pattern_data(args) }
         cycle_failure = false
 
         0.upto(repeat_count - 1) do |count|
+
           # process timing events
           @cycletiming[tset]['events'].each do |event|
             # process drive events
@@ -326,14 +328,16 @@ module OrigenLink
                 p.process_event(:compare, @cycletiming[tset]['compare_event_data'][event])
               end
             end
-
-            # build response message
-            message += ' ' unless count == 0
-            @pinmap.each do |p|
-              message += p.response
-              cycle_failure = true if p.cycle_failure
-            end
           end # event
+
+          # build response message
+          message += ' ' unless count == 0
+
+          @patternorder.each do |p|
+            message += @pinmap[p].response
+            cycle_failure = true if @pinmap[p].cycle_failure
+          end
+
         end # count
         if cycle_failure
           rtnmsg = 'F:' + message + '    Expected:' + args
