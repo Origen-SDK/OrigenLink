@@ -245,7 +245,7 @@ module OrigenLink
           @cycletiming[tset_key]['drive_event_data'][1] = ['data']
           @cycletiming[tset_key]['drive_event_pins'][1][0] << @pinmap[pin_name]
           @cycletiming[tset_key]['drive_event_pins'][3][0] << @pinmap[pin_name]
-          @cycletiming[tset_key]['compare_event_pins'][1] = [@pinmap[pin_name]]
+          @cycletiming[tset_key]['compare_event_pins'][1] = [[@pinmap[pin_name]]]
           if drive_type == 'rl'
             @cycletiming[tset_key]['drive_event_data'][3] = ['0']
           else
@@ -331,10 +331,10 @@ module OrigenLink
 
           # define default timing
           @cycletiming[0]['events'] << index
-          @cycletiming[0]['drive_event_data'][index] = 'data'
-          @cycletiming[0]['drive_event_pins'][index] = [@pinmap[pin]]
-          @cycletiming[0]['compare_event_data'][index] = 'data'
-          @cycletiming[0]['compare_event_pins'][index] = [@pinmap[pin]]
+          @cycletiming[0]['drive_event_data'][index] = ['data']
+          @cycletiming[0]['drive_event_pins'][index] = [[@pinmap[pin]]]
+          @cycletiming[0]['compare_event_data'][index] = ['data']
+          @cycletiming[0]['compare_event_pins'][index] = [[@pinmap[pin]]]
           index += 1
         end
         'P:'
