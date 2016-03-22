@@ -1,0 +1,39 @@
+# Misc
+.irb_history
+
+# Editor cruft
+*.swp
+*.swo
+*~
+
+# Origen local files
+/.bundle
+/.lsf
+/.ref
+/.session
+/target/.default
+/environment/.default
+/release_note.txt
+/pkg
+/lbin
+/.bin
+/list/referenced.list
+/tags
+/.ref
+/.ws
+/.lsf
+/.db
+/log
+/output
+/web
+/coverage
+/.ref
+/.yardoc
+/.collection
+/.bin
+/.session
+/tmp
+
+# Cruft from other revision control systems
+.SYNC
+.svn
