@@ -122,8 +122,8 @@ module OrigenLink
         Origen.log.error('pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
       else
         Origen.log.info('executing pattern with pinmap:' + @pinmap.to_s)
-        end
       end
+    end
 
     # finalize_pattern
     #   At some point in the future this finalization should be done behind the scenes.
@@ -136,7 +136,7 @@ module OrigenLink
         Origen.log.success("PASS - pattern execution passed (#{@vector_count} vectors pass)")
       else
         Origen.log.error("FAIL - pattern execution failed (#{@fail_count} failures)")
-        end
+      end
       # for debug, report communication times
       Origen.log.info("total communication time: #{@total_comm_time}")
       Origen.log.info("total connect time: #{@total_connect_time}")

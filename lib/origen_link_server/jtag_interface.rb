@@ -1,3 +1,4 @@
+# rubocop:disable Style/For: Prefer each over for.
 require_relative 'pin_interface'
 
 class OrigenLinkJtag

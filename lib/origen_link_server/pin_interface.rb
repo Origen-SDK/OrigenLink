@@ -97,6 +97,7 @@ class OrigenLinkPin
     end
   end
 
+  # rubocop:disable Style/EmptyElse: Redundant else-clause.
   def in
     if @gpio_valid
       if @direction == :out

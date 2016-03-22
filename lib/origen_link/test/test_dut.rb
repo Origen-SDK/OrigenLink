@@ -29,7 +29,7 @@ module TestDut
           tester.pinmap = 'tclk,119,tms,1900,tdi,116,tdo,124'
         else
           tester.pinmap = 'tclk,119,tms,6,tdi,116,tdo,124' unless options[:missing_pinmap_test]
-      end
+        end
         tester.pinorder = 'tclk,tms,tdi,tdo'
       end
     end

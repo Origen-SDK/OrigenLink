@@ -1,3 +1,4 @@
+# rubocop:disable Style/FileName: Use snake_case for source file names.
 require_relative '../LinkSequencer'
 require 'test/unit'
 

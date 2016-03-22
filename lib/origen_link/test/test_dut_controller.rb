@@ -36,7 +36,7 @@ module TestDut
       # if tester.link?
       if tester.to_s == 'OrigenLink::VectorBased'
         tester.finalize_pattern
-    end
+      end
     end
   end
 end
