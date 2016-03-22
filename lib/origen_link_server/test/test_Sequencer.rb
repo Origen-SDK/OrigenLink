@@ -2,7 +2,6 @@ require_relative '../LinkSequencer'
 require 'test/unit'
 
 class TestLinkSequencer < Test::Unit::TestCase
-
   def test_pinmap
     test_obj = OrigenLinkSequencer.new
     assert_equal('P:', test_obj.processmessage('pin_assign:tck,23'))
@@ -16,13 +15,12 @@ class TestLinkSequencer < Test::Unit::TestCase
   def test_pinorder
     test_obj2 = OrigenLinkSequencer.new
     assert_equal('P:', test_obj2.processmessage('pin_patternorder:tdi,tdo,tms'))
-    assert_equal(['tdi','tdo','tms'], test_obj2.patternorder)
-    assert_equal({'tdi' => 0, 'tdo' => 1, 'tms' => 2}, test_obj2.patternpinindex)
-    assert_equal([['tdi','tdo','tms'],[],[]], test_obj2.cycletiming[0]['timing'])
+    assert_equal(%w(tdi tdo tms), test_obj2.patternorder)
+    assert_equal({ 'tdi' => 0, 'tdo' => 1, 'tms' => 2 }, test_obj2.patternpinindex)
+    assert_equal([%w(tdi tdo tms), [], []], test_obj2.cycletiming[0]['timing'])
   end
 
   def test_clear
-    
   end
 
   def test_pinformat_timing
@@ -46,8 +44,7 @@ class TestLinkSequencer < Test::Unit::TestCase
     assert_equal(nil, test_obj3.cycletiming[2]['rh'])
     assert_equal(nil, test_obj3.cycletiming[1]['rl'])
     assert_equal(['xtal'], test_obj3.cycletiming[1]['rh'])
-    assert_equal([['tdi'],['tms'],['tdo']], test_obj3.cycletiming[1]['timing'])
-    assert_equal([[],[],[]], test_obj3.cycletiming[2]['timing'])
+    assert_equal([['tdi'], ['tms'], ['tdo']], test_obj3.cycletiming[1]['timing'])
+    assert_equal([[], [], []], test_obj3.cycletiming[2]['timing'])
   end
-
 end

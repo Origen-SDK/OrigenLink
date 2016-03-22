@@ -1,44 +1,44 @@
 require 'socket'
 require_relative 'LinkSequencer'
 
-server = TCPServer.open("192.168.0.2", 12777)
+server = TCPServer.open('192.168.0.2', 12_777)
 puts 'server started'
 pinsequencer = OrigenLinkSequencer.new
 
-#time measurements for debug only
-#total_receive_time=0
-#total_process_time=0
-#total_xmit_time=0
-#total_close_time=0
-#total_packets=0
+# time measurements for debug only
+# total_receive_time=0
+# total_process_time=0
+# total_xmit_time=0
+# total_close_time=0
+# total_packets=0
 loop do
   client = server.accept
-  #time measurements for debug only
-  #t1 = Time.now
+  # time measurements for debug only
+  # t1 = Time.now
   message = client.gets
-  #t2 = Time.now
-  #process the message
-  #for now only pin_ messages are accepted
+  # t2 = Time.now
+  # process the message
+  # for now only pin_ messages are accepted
   response = pinsequencer.processmessage(message.chomp)
-  #t3 = Time.now
+  # t3 = Time.now
   client.puts(response)
-  #t4 = Time.now
+  # t4 = Time.now
   client.close
-  #t5 = Time.now
+  # t5 = Time.now
 
-  #puts "packet process time: #{t3-t2}"
-  #total_receive_time += (t2-t1)
-  #total_process_time += (t3-t2)
-  #total_xmit_time += (t4-t3)
-  #total_close_time += (t5-t4)
-  #total_packets += 1
-  #puts "total receive time: #{total_receive_time}"
-  #puts "total process time: #{total_process_time}"
-  #puts "total xmit time: #{total_xmit_time}"
-  #puts "total close time: #{total_close_time}"
-  #puts ''
-  #puts "total receive time: #{total_receive_time/total_packets}"
-  #puts "total process time: #{total_process_time/total_packets}"
-  #puts "total xmit time: #{total_xmit_time/total_packets}"
-  #puts "total close time: #{total_close_time/total_packets}"
+  # puts "packet process time: #{t3-t2}"
+  # total_receive_time += (t2-t1)
+  # total_process_time += (t3-t2)
+  # total_xmit_time += (t4-t3)
+  # total_close_time += (t5-t4)
+  # total_packets += 1
+  # puts "total receive time: #{total_receive_time}"
+  # puts "total process time: #{total_process_time}"
+  # puts "total xmit time: #{total_xmit_time}"
+  # puts "total close time: #{total_close_time}"
+  # puts ''
+  # puts "total receive time: #{total_receive_time/total_packets}"
+  # puts "total process time: #{total_process_time/total_packets}"
+  # puts "total xmit time: #{total_xmit_time/total_packets}"
+  # puts "total close time: #{total_close_time/total_packets}"
 end

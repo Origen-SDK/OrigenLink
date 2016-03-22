@@ -10,7 +10,7 @@
 #                instance variables
 #  ionumber - required, value indicating the pin number (BCM IO number,
 #             not the header pin number)
-#  direction - optional, specifies the pin direction.  A pin is 
+#  direction - optional, specifies the pin direction.  A pin is
 #              initialized as an input if a direction isn't specified.
 #
 #
@@ -29,7 +29,7 @@
 #  update_direction:
 #    description - Sets the pin direction
 #
-#  direction - specifies the pin direction.  A pin is 
+#  direction - specifies the pin direction.  A pin is
 #              initialized as an input if a direction isn't specified.
 #
 #  Valid direction values:
@@ -39,22 +39,22 @@
 #    :out_low	-	output, initialized low
 class OrigenLinkPin
   @@pin_setup = {
-    in:			'in',
-    out:		'out',
-    out_high:		'high',
-    out_low:		'low',
+    in:			    'in',
+    out:		    'out',
+    out_high:	'high',
+    out_low:		'low'
   }
 
-  attr_reader  :gpio_valid
+  attr_reader :gpio_valid
 
   def initialize(ionumber, direction = :in)
-    @ionumber=Integer(ionumber)
-    @pin_dir_name="/sys/class/gpio/gpio#{@ionumber}/direction"
-    @pin_val_name="/sys/class/gpio/gpio#{@ionumber}/value"
-    if not(File.exists?(@pin_dir_name))
+    @ionumber = Integer(ionumber)
+    @pin_dir_name = "/sys/class/gpio/gpio#{@ionumber}/direction"
+    @pin_val_name = "/sys/class/gpio/gpio#{@ionumber}/value"
+    if notFile.exist?(@pin_dir_name)
       system("echo #{@ionumber} > /sys/class/gpio/export")
       sleep 0.05
-      if $? == 0
+      if $CHILD_STATUS == 0
         @gpio_valid = true
       else
         @gpio_valid = false
@@ -64,17 +64,17 @@ class OrigenLinkPin
     end
     if @gpio_valid
       if File.writable?(@pin_dir_name)
-        @pin_dir_obj=File.open(@pin_dir_name,'w')
-        self.update_direction(direction)
+        @pin_dir_obj = File.open(@pin_dir_name, 'w')
+        update_direction(direction)
       else
         @gpio_valid = false
         puts "#{@pin_dir_name} is not writable. Fix permissions or run as super user."
       end
-      @pin_val_obj=File.open(@pin_val_name,"r+") if @gpio_valid
+      @pin_val_obj = File.open(@pin_val_name, 'r+') if @gpio_valid
     end
   end
-  
-  def destroy()
+
+  def destroy
     if @gpio_valid
       @pin_dir_obj.close
       @pin_val_obj.close
@@ -82,38 +82,38 @@ class OrigenLinkPin
       puts "pin #{@ionumber} is no longer exported"
     end
   end
-  
+
   def out(value)
     if @gpio_valid
       if @direction == :in
         if value == 1
-          self.update_direction(:out_high)
+          update_direction(:out_high)
         else
-          self.update_direction(:out_low)
+          update_direction(:out_low)
         end
       end
       @pin_val_obj.write(value)
       @pin_val_obj.flush
     end
   end
-  
-  def in()
+
+  def in
     if @gpio_valid
       if @direction == :out
-        self.update_direction(:in)
+        update_direction(:in)
       end
-      #below is original read - slow to reopen every time
-      #File.open(@pin_val_name, 'r') do |file|
+      # below is original read - slow to reopen every time
+      # File.open(@pin_val_name, 'r') do |file|
       #  file.read#.chomp
-      #end
-      #end original read
-      @pin_val_obj.pos=0
+      # end
+      # end original read
+      @pin_val_obj.pos = 0
       @pin_val_obj.getc
     else
       nil
     end
   end
-  
+
   def update_direction(direction)
     if @gpio_valid
       @pin_dir_obj.pos = 0
@@ -126,8 +126,8 @@ class OrigenLinkPin
       end
     end
   end
-  
-  def to_s()
+
+  def to_s
     'OrigenLinkPin' + @ionumber.to_s
   end
 end
