@@ -3,5 +3,6 @@
 # application requires
 require "origen_link"
 
-require "origen_link/test/test_dut"
-require "origen_link/test/test_dut_controller"
+require "origen_link/test/top_level"
+require "origen_link/test/top_level_controller"
+require "origen_link/test/vector_based"

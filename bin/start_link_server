@@ -1,10 +1,11 @@
-# rubocop:disable Style/FileName: Use snake_case for source file names.
+#!/usr/bin/env ruby
+$LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), '..', 'lib'))
 require 'socket'
-require_relative 'LinkSequencer'
+require 'origen_link/server/sequencer'
 
 server = TCPServer.open('192.168.0.2', 12_777)
 puts 'server started'
-pinsequencer = OrigenLinkSequencer.new
+pinsequencer = OrigenLink::Server::Sequencer.new
 
 # time measurements for debug only
 # total_receive_time=0

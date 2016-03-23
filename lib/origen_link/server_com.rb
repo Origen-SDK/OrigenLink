@@ -1,7 +1,5 @@
 module OrigenLink
-  class VectorBased
-    include OrigenTesters::VectorBasedTester
-
+  module ServerCom
     # send_cmd(cmdstr, argstr)
     #   cmdstr is a valid command.  <category>_<command>
     #     Ex: 'pin_assign'
