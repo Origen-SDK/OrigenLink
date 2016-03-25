@@ -42,7 +42,7 @@ module OrigenLink
     end
 
     def self.gpio_dir
-      @gpio_dir || '/sys/class/gpio/gpio'
+      @gpio_dir || '/sys/class/gpio'
     end
 
     class Sequencer

@@ -14,7 +14,7 @@ describe OrigenLink::Server::Sequencer do
   end
 
   def make_gpio(number)
-    d = "#{OrigenLink::Server.gpio_dir}/#{number}"
+    d = "#{OrigenLink::Server.gpio_dir}/gpio#{number}"
     FileUtils.mkdir_p(d) unless File.exist?(d)
     %w(direction value).each do |f|
       FileUtils.touch("#{d}/#{f}") unless File.exist?("#{d}/#{f}")

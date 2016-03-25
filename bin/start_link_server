@@ -3,7 +3,7 @@ $LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), '..', 'li
 require 'socket'
 require 'origen_link/server/sequencer'
 
-server = TCPServer.open('192.168.0.2', 12_777)
+server = TCPServer.open('', 12_777)
 puts 'server started'
 pinsequencer = OrigenLink::Server::Sequencer.new
 
