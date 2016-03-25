@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
                            "bin/*", "lib/tasks/**/*.rake", "pattern/**/*.rb",
                            "program/**/*.rb"
                           ]
-  spec.executables   = []
+  spec.executables   = ["start_link_server"]
   spec.require_paths = ["lib"]
 
   # Add any gems that your plugin needs to run within a host application
@@ -30,4 +30,5 @@ Gem::Specification.new do |spec|
   # Add any gems that your plugin needs for its development environment only
   spec.add_development_dependency 'origen_jtag', '>= 0.12.0'
   spec.add_development_dependency 'origen_doc_helpers'
+  spec.add_development_dependency 'test-unit'
 end

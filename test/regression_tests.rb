@@ -1,5 +1,4 @@
-require_relative '..\vector_based'
-require_relative 'vector_based_redefs'
+require_relative "../config/boot"
 require 'test/unit'
 
 class DummyTset
@@ -14,7 +13,7 @@ class TestVectorBased < Test::Unit::TestCase
   def test_stuff
     timeset_sim_obj = DummyTset.new
 
-    test_obj = OrigenLink::VectorBased.new('localhost', 12_777)
+    test_obj = OrigenLink::Test::VectorBased.new('localhost', 12_777)
     # setup pinmap
     test_obj.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
     assert_equal('pin_assign:tck,5,tdo,8,tms,10,tdi,15', test_obj.message)

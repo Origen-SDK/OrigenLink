@@ -1,3 +1,5 @@
+require 'origen_testers'
+require 'origen_link/server_com'
 module OrigenLink
   # OrigenLink::VectorBased
   #   This class is meant to be used for live silicon debug.  Vector data that Origen
@@ -25,7 +27,8 @@ module OrigenLink
   #   Create a link environment with the IP address and socket number of a link server
   #     $tester = OrigenLink::VectorBased.new('192.168.0.2', 12777)
   class VectorBased
-    # include OrigenTesters::VectorBasedTester
+    include OrigenTesters::VectorBasedTester
+    include ServerCom
 
     # these attributes are exposed for testing purposes, a user would not need to read them
     attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time, :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed

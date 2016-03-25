@@ -1,10 +1,12 @@
-# rubocop:disable Style/FileName: Use snake_case for source file names.
-require_relative '../LinkSequencer'
+require_relative "../config/boot"
+require 'origen_link/server/sequencer'
 require 'test/unit'
+require 'byebug'
 
 class TestLinkSequencer < Test::Unit::TestCase
   def test_pinmap
-    test_obj = OrigenLinkSequencer.new
+    test_obj = OrigenLink::Server::Sequencer.new
+    byebug
     assert_equal('P:', test_obj.processmessage('pin_assign:tck,23'))
     assert_equal('OrigenLinkPin23', test_obj.pinmap['tck'].to_s)
     assert_equal('F:pin tdo gpio1900 is invalid', test_obj.processmessage('pin_assign:tdo,1900'))
@@ -14,7 +16,7 @@ class TestLinkSequencer < Test::Unit::TestCase
   end
 
   def test_pinorder
-    test_obj2 = OrigenLinkSequencer.new
+    test_obj2 = OrigenLink::Server::Sequencer.new
     assert_equal('P:', test_obj2.processmessage('pin_patternorder:tdi,tdo,tms'))
     assert_equal(%w(tdi tdo tms), test_obj2.patternorder)
     assert_equal({ 'tdi' => 0, 'tdo' => 1, 'tms' => 2 }, test_obj2.patternpinindex)
@@ -25,7 +27,7 @@ class TestLinkSequencer < Test::Unit::TestCase
   end
 
   def test_pinformat_timing
-    test_obj3 = OrigenLinkSequencer.new
+    test_obj3 = OrigenLink::Server::Sequencer.new
     assert_equal('P:', test_obj3.processmessage('pin_format:1,tck,rl'))
     assert_equal(['tck'], test_obj3.cycletiming[1]['rl'])
     assert_equal(nil, test_obj3.cycletiming[1]['rh'])
