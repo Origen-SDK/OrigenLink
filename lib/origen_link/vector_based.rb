@@ -84,22 +84,27 @@ module OrigenLink
     #   Don't forget to flush when you're in debug mode.  Otherwise, the last vector of a
     #   write command won't be sent to the server.
     def flush_vector(programmed_data = '', tset = '')
-      if @vector_repeatcount > 1
-        repeat_prefix = "repeat#{@vector_repeatcount},"
-      else
-        repeat_prefix = ''
+      # prevent server crash when vector_flush is used during debug
+      unless @previous_vectordata == ''
+        if @vector_repeatcount > 1
+          repeat_prefix = "repeat#{@vector_repeatcount},"
+        else
+          repeat_prefix = ''
+        end
+        if @tsets_programmed[@previous_tset]
+          tset_prefix = "tset#{@tsets_programmed[@previous_tset]},"
+        else
+          tset_prefix = ''
+        end
+
+        response = send_cmd('pin_cycle', tset_prefix + repeat_prefix + @previous_vectordata)
+        microcode response
+        unless response.chr == 'P'
+          microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
+          @fail_count += 1
+        end
       end
-      if @tsets_programmed[@previous_tset]
-        tset_prefix = "tset#{@tsets_programmed[@previous_tset]},"
-      else
-        tset_prefix = ''
-      end
-      response = send_cmd('pin_cycle', tset_prefix + repeat_prefix + @previous_vectordata)
-      microcode response
-      unless response.chr == 'P'
-        microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
-        @fail_count += 1
-      end
+
       @vector_repeatcount = 1
       @previous_vectordata = programmed_data
       @previous_tset = tset
