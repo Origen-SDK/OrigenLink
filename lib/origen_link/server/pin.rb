@@ -51,10 +51,10 @@ module OrigenLink
 
       def initialize(ionumber, direction = :in)
         @ionumber = Integer(ionumber)
-        @pin_dir_name = "/sys/class/gpio/gpio#{@ionumber}/direction"
-        @pin_val_name = "/sys/class/gpio/gpio#{@ionumber}/value"
+        @pin_dir_name = "#{Server.gpio_dir}/#{@ionumber}/direction"
+        @pin_val_name = "#{Server.gpio_dir}/#{@ionumber}/value"
         if !File.exist?(@pin_dir_name)
-          system("echo #{@ionumber} > /sys/class/gpio/export")
+          system("echo #{@ionumber} > #{Server.gpio_dir}/export")
           sleep 0.05
           if $CHILD_STATUS == 0
             @gpio_valid = true

@@ -22,8 +22,14 @@ require "origen"
 
 require "rspec/legacy_formatters"
 require "#{Origen.top}/spec/format/origen_formatter"
-require "byebug"
+
+if RUBY_VERSION >= '2.0.0'
+  require "byebug"
+else
+  require 'debugger'
+end
 require 'pry'
+require_relative '../config/boot'
 
 def load_target(target="default")
   Origen.target.switch_to target

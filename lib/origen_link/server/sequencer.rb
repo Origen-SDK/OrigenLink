@@ -37,6 +37,14 @@ require 'origen_link/server/pin'
 ##################################################
 module OrigenLink
   module Server
+    def self.gpio_dir=(path)
+      @gpio_dir = path
+    end
+
+    def self.gpio_dir
+      @gpio_dir || '/sys/class/gpio/gpio'
+    end
+
     class Sequencer
       attr_reader :pinmap
       attr_reader :patternorder
