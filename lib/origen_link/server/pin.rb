@@ -42,9 +42,7 @@ module OrigenLink
     class Pin
       @@pin_setup = {
         in:       'in',
-        out:      'out',
-        out_high: 'high',
-        out_low:  'low'
+        out:      'out'
       }
 
       attr_reader :gpio_valid
@@ -88,11 +86,7 @@ module OrigenLink
       def out(value)
         if @gpio_valid
           if @direction == :in
-            if value == 1
-              update_direction(:out_high)
-            else
-              update_direction(:out_low)
-            end
+            update_direction(:out)
           end
           @pin_val_obj.write(value)
           @pin_val_obj.flush
@@ -119,11 +113,7 @@ module OrigenLink
           @pin_dir_obj.pos = 0
           @pin_dir_obj.write(@@pin_setup[direction])
           @pin_dir_obj.flush
-          if direction == :in
-            @direction = direction
-          else
-            @direction = :out
-          end
+          @direction = direction
         end
       end
 

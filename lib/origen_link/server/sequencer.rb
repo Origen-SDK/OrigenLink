@@ -316,10 +316,18 @@ module OrigenLink
           case pin.in
           when '0'
             @cycle_failure = true if data == 'H'
-            'L'
+            if data == 'X'
+              '.'
+            else
+              'L'
+            end
           when '1'
             @cycle_failure = true if data == 'L'
-            'H'
+            if data == 'X'
+              '`'
+            else
+              'H'
+            end
           else
             'W'
           end
