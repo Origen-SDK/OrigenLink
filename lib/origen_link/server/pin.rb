@@ -41,8 +41,8 @@ module OrigenLink
   module Server
     class Pin
       @@pin_setup = {
-        in:       'in',
-        out:      'out'
+        in:  'in',
+        out: 'out'
       }
 
       attr_reader :gpio_valid

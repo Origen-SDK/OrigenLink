@@ -32,9 +32,10 @@ module OrigenLink
     include ServerCom
 
     # these attributes are exposed for testing purposes, a user would not need to read them
-    attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time, :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed
+    attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time
+    attr_reader :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed, :captured_data
 
-    def initialize(address, port, options={})
+    def initialize(address, port, options = {})
       @address = address
       @port = port
       @fail_count = 0
@@ -51,6 +52,8 @@ module OrigenLink
       @max_receive_time = 0
       @tsets_programmed = {}
       @tset_count = 1
+      @store_pins = []
+      @captured_data = []
       # A tester seems to be unable to register as a callback handler, so for now instantiating a
       # dedicated object to implement the handlers related to this tester
       CallbackHandlers.new
@@ -69,7 +72,7 @@ module OrigenLink
       tset = options[:timeset].name
       if @vector_count > 0
         # compressing repeats as we go
-        if (programmed_data == @previous_vectordata) && (@previous_tset == tset)
+        if (programmed_data == @previous_vectordata) && (@previous_tset == tset) && @store_pins.empty?
           @vector_repeatcount += 1
         else
           # all repeats of the previous vector have been counted
@@ -85,6 +88,64 @@ module OrigenLink
         @vector_repeatcount = 1
       end # if vector_count > 0
       @vector_count += 1
+    end
+
+    # Capture a vector
+    #
+    # This method applies a store vector request to the previous vector, note that is does
+    # not actually generate a new vector.
+    #
+    # The captured data is added to the captured_data array.
+    #
+    # This method is indended to be used by pin drivers, see the #capture method for the application
+    # level API.
+    #
+    # @example
+    #   $tester.cycle                # This is the vector you want to capture
+    #   $tester.store                # This applies the store request
+    def store(*pins)
+      options = pins.last.is_a?(Hash) ? pins.pop : {}
+      fail 'The store is not implemented yet on Link'
+    end
+
+    # Capture the next vector generated
+    #
+    # This method applies a store request to the next vector to be generated,
+    # note that is does not actually generate a new vector.
+    #
+    # The captured data is added to the captured_data array.
+    #
+    # This method is indended to be used by pin drivers, see the #capture method for the application
+    # level API.
+    #
+    # @example
+    #   tester.store_next_cycle
+    #   tester.cycle                # This is the vector that will be captured
+    def store_next_cycle(*pins)
+      options = pins.last.is_a?(Hash) ? pins.pop : {}
+      flush_vector
+      @store_pins = pins
+    end
+
+    # Capture any store data within the given block, return it and then internally clear the tester's
+    # capture memory.
+    #
+    # @example
+    #
+    #   v = tester.capture do
+    #     my_reg.store!
+    #   end
+    #   v      # => Data value read from my_reg on the DUT
+    def capture(*args)
+      if block_given?
+        yield
+        d = @captured_data
+        @captured_data = []
+        d
+      else
+        # On other testers capture is an alias of store
+        store(*args)
+      end
     end
 
     # flush_vector
@@ -108,9 +169,17 @@ module OrigenLink
         end
 
         response = send_cmd('pin_cycle', tset_prefix + repeat_prefix + @previous_vectordata)
+        unless @store_pins.empty?
+          msg = "  (Captured #{@store_pins.map(&:name).join(', ')})\n"
+          capture_data(response)
+          response.strip!
+          response += msg
+        end
         microcode response
+
         unless response.chr == 'P'
-          #microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
+          # TODO: Put this back with an option to disable, based on a serial or parallel interface being used
+          # microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
           @fail_count += 1
         end
       end
@@ -164,10 +233,10 @@ module OrigenLink
       Origen.log.debug("max duration command - #{@longest_packet}")
       Origen.log.debug("max receive time: #{@max_receive_time}")
       if @fail_count == 0
-        #Origen.log.success("PASS - pattern execution passed (#{@vector_count} vectors pass)")
+        # Origen.log.success("PASS - pattern execution passed (#{@vector_count} vectors pass)")
         Origen.app.stats.report_pass
       else
-        #Origen.log.error("FAIL - pattern execution failed (#{@fail_count} failures)")
+        # Origen.log.error("FAIL - pattern execution failed (#{@fail_count} failures)")
         Origen.app.stats.report_fail
       end
     end
@@ -261,6 +330,38 @@ module OrigenLink
         @tset_count += 1
       end
       @tsets_programmed[name]
+    end
+
+    private
+
+    def capture_data(response)
+      if @store_pins.size > 1
+        fail 'Data capture on multiple pins is not implemented yet'
+      else
+        captured_data[0] ||= 0
+        captured_data[0] = (captured_data[0] << 1) | extract_value(response, @store_pins[0])
+        @store_pins = []
+      end
+    end
+
+    def extract_value(response, pin)
+      v = response[index_of(pin) + 2]
+      if v == '`'
+        1
+      elsif v == '.'
+        0
+      else
+        fail "Failed to extract value for pin #{pin.name}, character in response is: #{v}"
+      end
+    end
+
+    # Returns the vector index (position) of the given pin
+    def index_of(pin)
+      i = @pinorder.split(',').index(pin.name.to_s)
+      unless i
+        fail "Data capture of pin #{pin.name} has been requested, but it has not been included in the Link pinmap!"
+      end
+      i
     end
   end
 end
