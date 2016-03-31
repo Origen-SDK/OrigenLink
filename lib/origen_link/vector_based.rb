@@ -1,5 +1,6 @@
 require 'origen_testers'
 require 'origen_link/server_com'
+require 'origen_link/callback_handlers'
 module OrigenLink
   # OrigenLink::VectorBased
   #   This class is meant to be used for live silicon debug.  Vector data that Origen
@@ -33,7 +34,7 @@ module OrigenLink
     # these attributes are exposed for testing purposes, a user would not need to read them
     attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time, :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed
 
-    def initialize(address, port)
+    def initialize(address, port, options={})
       @address = address
       @port = port
       @fail_count = 0
@@ -50,12 +51,21 @@ module OrigenLink
       @max_receive_time = 0
       @tsets_programmed = {}
       @tset_count = 1
+      # A tester seems to be unable to register as a callback handler, so for now instantiating a
+      # dedicated object to implement the handlers related to this tester
+      CallbackHandlers.new
     end
 
     # push_vector
     #   This method intercepts vector data from Origen, removes white spaces and compresses repeats
     def push_vector(options)
       programmed_data = options[:pin_vals].gsub(/\s+/, '')
+      unless options[:timeset]
+        puts 'No timeset defined!'
+        puts 'Add one to your top level startup method or target like this:'
+        puts '$tester.set_timeset("nvmbist", 40)   # Where 40 is the period in ns'
+        exit 1
+      end
       tset = options[:timeset].name
       if @vector_count > 0
         # compressing repeats as we go
@@ -100,7 +110,7 @@ module OrigenLink
         response = send_cmd('pin_cycle', tset_prefix + repeat_prefix + @previous_vectordata)
         microcode response
         unless response.chr == 'P'
-          microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
+          #microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
           @fail_count += 1
         end
       end
@@ -140,24 +150,26 @@ module OrigenLink
     #   pattern execution along with execution time information.
     def finalize_pattern(programmed_data = '')
       flush_vector(programmed_data)
-      if @fail_count == 0
-        Origen.log.success("PASS - pattern execution passed (#{@vector_count} vectors pass)")
-      else
-        Origen.log.error("FAIL - pattern execution failed (#{@fail_count} failures)")
-      end
       # for debug, report communication times
-      Origen.log.info("total communication time: #{@total_comm_time}")
-      Origen.log.info("total connect time: #{@total_connect_time}")
-      Origen.log.info("total transmit time: #{@total_xmit_time}")
-      Origen.log.info("total receive time: #{@total_recv_time}")
-      Origen.log.info("total packets: #{@total_packets}")
-      Origen.log.info("total time per packet: #{@total_comm_time / @total_packets}")
-      Origen.log.info("connect time per packet: #{@total_connect_time / @total_packets}")
-      Origen.log.info("transmit time per packet: #{@total_xmit_time / @total_packets}")
-      Origen.log.info("receive time per packet: #{@total_recv_time / @total_packets}")
-      Origen.log.info("max packet time: #{@max_packet_time}")
-      Origen.log.info('max duration command - ' + @longest_packet)
-      Origen.log.info("max receive time: #{@max_receive_time}")
+      Origen.log.debug("total communication time: #{@total_comm_time}")
+      Origen.log.debug("total connect time: #{@total_connect_time}")
+      Origen.log.debug("total transmit time: #{@total_xmit_time}")
+      Origen.log.debug("total receive time: #{@total_recv_time}")
+      Origen.log.debug("total packets: #{@total_packets}")
+      Origen.log.debug("total time per packet: #{@total_comm_time / @total_packets}")
+      Origen.log.debug("connect time per packet: #{@total_connect_time / @total_packets}")
+      Origen.log.debug("transmit time per packet: #{@total_xmit_time / @total_packets}")
+      Origen.log.debug("receive time per packet: #{@total_recv_time / @total_packets}")
+      Origen.log.debug("max packet time: #{@max_packet_time}")
+      Origen.log.debug("max duration command - #{@longest_packet}")
+      Origen.log.debug("max receive time: #{@max_receive_time}")
+      if @fail_count == 0
+        #Origen.log.success("PASS - pattern execution passed (#{@vector_count} vectors pass)")
+        Origen.app.stats.report_pass
+      else
+        #Origen.log.error("FAIL - pattern execution failed (#{@fail_count} failures)")
+        Origen.app.stats.report_fail
+      end
     end
 
     # to_s
@@ -168,14 +180,6 @@ module OrigenLink
     #   plug in supports the method link?.
     def to_s
       'OrigenLink::VectorBased'
-    end
-
-    # link?
-    #   returns true.
-    #
-    #   This method indicates to user code that link is the tester environment.
-    def link?
-      true
     end
 
     # pinmap=
