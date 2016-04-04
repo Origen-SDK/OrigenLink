@@ -48,8 +48,7 @@ describe OrigenLink::VectorBased do
     test_obj.microcodestr = ''
     test_obj.test_response = 'P:1100'
     test_obj.push_vector(timeset: timeset_sim_obj, pin_vals: '1000')
-    test_obj.message.should == 'pin_cycle:1100'
-    test_obj.microcodestr.should == 'P:1100'
+    test_obj.vector_batch.should == ['pin_cycle:1100']
   end
 
   specify "that repeat count accumulates" do
@@ -61,7 +60,7 @@ describe OrigenLink::VectorBased do
   specify "check that repeat count is correctly sent" do
     test_obj.test_response = 'P:repeat2,1000'
     test_obj.flush_vector
-    test_obj.message.should == 'pin_cycle:repeat2,1000'
+    test_obj.vector_batch.should == ['pin_cycle:1100','pin_cycle:repeat2,1000']
   end
 
   specify "pin format setup" do
@@ -80,6 +79,8 @@ describe OrigenLink::VectorBased do
     timeset_sim_obj.name = 'func_25mhz'
     test_obj.push_vector(timeset: timeset_sim_obj, pin_vals: '1000')
     test_obj.flush_vector
-    test_obj.message.should == 'pin_cycle:tset1,1000'
+    test_obj.vector_batch.should == ['pin_cycle:1100','pin_cycle:repeat2,1000','pin_cycle:tset1,1000']
   end
+  
+  # TODO: Add tests to check capture and comment batching alignment with batched vectors
 end

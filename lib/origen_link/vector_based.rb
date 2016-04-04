@@ -34,6 +34,7 @@ module OrigenLink
     # these attributes are exposed for testing purposes, a user would not need to read them
     attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time
     attr_reader :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed, :captured_data
+	attr_reader :vector_batch, :store_pins_batch, :comment_batch
 
     def initialize(address, port, options = {})
       @address = address

@@ -9,6 +9,10 @@ module OrigenLink
         @message = cmdstr + ':' + argstr
         @test_response
       end
+	  
+	  def send_batch(vector_batch)
+	    @test_response
+	  end
 
       def setup_cmd_response_logger(command, response)
       end
