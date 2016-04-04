@@ -8,10 +8,10 @@ module OrigenLink
       attr_accessor :anytdofail
 
       def initialize(tdiio = 16, tdoio = 23, tmsio = 19, tckio = 26, tck_period = 0.000001)
-        @tdipin = Pin.new(tdiio, :out_low)
+        @tdipin = Pin.new(tdiio, :out)
         @tdopin = Pin.new(tdoio, :in)
-        @tmspin = Pin.new(tmsio, :out_low)
-        @tckpin = Pin.new(tckio, :out_low)
+        @tmspin = Pin.new(tmsio, :out)
+        @tckpin = Pin.new(tckio, :out)
         @tck_half_period = tck_period / 2
         @tdoval = 0
         @tdostr = ''

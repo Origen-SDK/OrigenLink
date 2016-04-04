@@ -78,8 +78,8 @@ module OrigenLink
         if @gpio_valid
           @pin_dir_obj.close
           @pin_val_obj.close
-          system("echo #{@ionumber} > /sys/class/gpio/unexport")
-          puts "pin #{@ionumber} is no longer exported"
+          # system("echo #{@ionumber} > /sys/class/gpio/unexport")
+          # puts "pin #{@ionumber} is no longer exported"
         end
       end
 

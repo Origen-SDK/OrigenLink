@@ -341,6 +341,7 @@ module OrigenLink
       #    is called by the "pin_assign" method
       ##################################################
       def pin_clear
+        @pinmap.each {|pin_name, pin| pin.destroy}
         @pinmap.clear
         @patternpinindex.clear
         @patternorder.delete_if { true }
