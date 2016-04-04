@@ -3,7 +3,7 @@ module OrigenLink
     include Origen::Callbacks
 
     def pattern_generated(output_file)
-      tester.finalize_pattern
+      tester.finalize_pattern(output_file)
     end
 
     def before_pattern(pattern_name)

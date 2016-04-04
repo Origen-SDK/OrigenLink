@@ -27,7 +27,7 @@ module OrigenLink
       # open a connection to the server, send the command and wait for a response
       TCPSocket.open(@address, @port) do |link|
         t2 = Time.now
-        link.puts(cmdstr + ':' + argstr)
+		link.write(cmdstr + ':' + argstr + "\n\n")
         t3 = Time.now
         response = link.gets
         t4 = Time.now
@@ -44,9 +44,36 @@ module OrigenLink
       @total_recv_time += (t4 - t3)
       @max_receive_time = (t4 - t3) if @max_receive_time < (t4 - t3)
       @total_packets += 1
-      Origen.log.error 'nil reponse from server (likely died) for command(' + cmdstr + ':' + argstr + ')' if response.nil?
+      Origen.log.error 'nil response from server (likely died) for command(' + cmdstr + ':' + argstr + ')' if response.nil?
       response	# ensure the response is passed along
     end
+	
+	def send_batch(vector_batch)
+      t2 = 0
+      t3 = 0
+      t4 = 0
+      t5 = 0
+      response = []
+      t1 = Time.now
+	  TCPSocket.open(@address, @port) do |link|
+	    t2 = Time.now
+		vector_batch_str = vector_batch.join("\n") + "\n\n"
+		link.write(vector_batch_str)
+		t3 =  Time.now
+		while line = link.gets 
+		  response << line.chomp
+		end
+		t4 = Time.now
+	  end
+	  t5 = Time.now
+      @total_comm_time += (t5 - t1)
+      @total_connect_time += (t2 - t1)
+      @total_xmit_time += (t3 - t2)
+      @total_recv_time += (t4 - t3)
+      @max_receive_time = (t4 - t3) if @max_receive_time < (t4 - t3)
+      @total_packets += 1
+	  response
+	end
 
     # setup_cmd_response_logger
     #   There are several setup commands that initialize the debugger device with
