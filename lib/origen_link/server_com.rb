@@ -85,7 +85,7 @@ module OrigenLink
         # if the server died (which hopefully it never will) response is nil
         case response.chr
         when 'P'
-          Origen.log.info command + ' setup was successful'
+          Origen.log.debug command + ' setup was successful'
         when 'F'
           Origen.log.error command + ' setup FAILED with the following message:'
           Origen.log.error response.chomp

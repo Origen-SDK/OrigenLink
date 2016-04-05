@@ -298,7 +298,7 @@ module OrigenLink
       if @pinmap.nil?
         Origen.log.error('pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
       else
-        Origen.log.info('executing pattern with pinmap:' + @pinmap.to_s)
+        Origen.log.debug('executing pattern with pinmap:' + @pinmap.to_s)
       end
     end
 
