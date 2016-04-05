@@ -162,7 +162,6 @@ module OrigenLink
         yield
         synchronize
         d = @captured_data
-        puts d[0].to_s(2)
         @captured_data = []
         d
       else
