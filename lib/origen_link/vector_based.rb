@@ -12,15 +12,15 @@ module OrigenLink
   # Integration instructions
   #   Set the pin map (must be done first) and pin order
   #     if tester.link?
-  #	    tester.pinmap = 'tclk,26,tms,19,tdi,16,tdo,23'
-  #		tester.pinorder = 'tclk,tms,tdi,tdo'
+  #        tester.pinmap = 'tclk,26,tms,19,tdi,16,tdo,23'
+  #        tester.pinorder = 'tclk,tms,tdi,tdo'
   #     end
   #
   #   Set Origen to only generate vectors for pins in the pinmap (order should match)
-  #  	  pin_pattern_order :tclk, :tms, :tdi, :tdo, only: true if tester.link?
+  #        pin_pattern_order :tclk, :tms, :tdi, :tdo, only: true if tester.link?
   #
   #   At the beginning of the Startup method add this line
-  #	  tester.initialize_pattern if tester.link?
+  #      tester.initialize_pattern if tester.link?
   #
   #   At the end of the Shutdown method add this line
   #     tester.finalize_pattern if tester.link?
@@ -34,7 +34,7 @@ module OrigenLink
     # these attributes are exposed for testing purposes, a user would not need to read them
     attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time
     attr_reader :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed, :captured_data
-	attr_reader :vector_batch, :store_pins_batch, :comment_batch
+    attr_reader :vector_batch, :store_pins_batch, :comment_batch
 
     def initialize(address, port, options = {})
       @address = address
@@ -58,28 +58,28 @@ module OrigenLink
       # A tester seems to be unable to register as a callback handler, so for now instantiating a
       # dedicated object to implement the handlers related to this tester
       CallbackHandlers.new
-	  @vector_batch = []
-	  @store_pins_batch = {}
-	  @comment_batch = {}
-	  @batch_vectors = true
+      @vector_batch = []
+      @store_pins_batch = {}
+      @comment_batch = {}
+      @batch_vectors = true
     end
 
-	# push_comment
-	#   This method intercepts comments so they can be correctly placed in the output file
-	#   when vector batching is used
-	def push_comment(msg)
-	  if @batch_vectors
-	    key = @vector_batch.length
-	    if @comment_batch.key?(key)
-		  @comment_batch[key] = @comment_batch[key] +"\n" + msg
-		else
-		  @comment_batch[key] = msg
-		end
-	  else
-		microcode msg
-	  end
-	end
-	
+    # push_comment
+    #   This method intercepts comments so they can be correctly placed in the output file
+    #   when vector batching is used
+    def push_comment(msg)
+      if @batch_vectors
+        key = @vector_batch.length
+        if @comment_batch.key?(key)
+          @comment_batch[key] = @comment_batch[key] + "\n" + msg
+        else
+          @comment_batch[key] = msg
+        end
+      else
+        microcode msg
+      end
+    end
+
     # push_vector
     #   This method intercepts vector data from Origen, removes white spaces and compresses repeats
     def push_vector(options)
@@ -160,9 +160,8 @@ module OrigenLink
     def capture(*args)
       if block_given?
         yield
-		synchronize
+        synchronize
         d = @captured_data
-puts d[0].to_s(2)
         @captured_data = []
         d
       else
@@ -191,103 +190,103 @@ puts d[0].to_s(2)
           tset_prefix = ''
         end
 
-		if @batch_vectors
-		  @vector_batch << 'pin_cycle:' + tset_prefix + repeat_prefix + @previous_vectordata
-		  #store capture pins for batch processing
-		  unless @store_pins.empty?
-		    @store_pins_batch[@vector_batch.length - 1] = @store_pins
-		  end
-		else
+        if @batch_vectors
+          @vector_batch << 'pin_cycle:' + tset_prefix + repeat_prefix + @previous_vectordata
+          # store capture pins for batch processing
+          unless @store_pins.empty?
+            @store_pins_batch[@vector_batch.length - 1] = @store_pins
+          end
+        else
           process_vector_response(send_cmd('pin_cycle', tset_prefix + repeat_prefix + @previous_vectordata))
-		end
-	    
-		#make sure that only requested vectors are stored when batching is enabled
-	    @store_pins = []
-	  end
+        end
+
+        # make sure that only requested vectors are stored when batching is enabled
+        @store_pins = []
+      end
 
       @vector_repeatcount = 1
       @previous_vectordata = programmed_data
       @previous_tset = tset
     end
 
-	# synchronize
-	#   This method will synchronize the DUT state with Origen.  All generated
-	#   vectors are sent to the DUT for execution and the responses are processed
-	def synchronize(output_file = '')
+    # synchronize
+    #   This method will synchronize the DUT state with Origen.  All generated
+    #   vectors are sent to the DUT for execution and the responses are processed
+    def synchronize(output_file = '')
       flush_vector
-	  if @batch_vectors
-	    process_response(send_batch(@vector_batch), output_file)
-	  end
-	  @vector_batch = []
-	  @store_pins_batch.clear
-	  @comment_batch.clear
-	end
+      if @batch_vectors
+        process_response(send_batch(@vector_batch), output_file)
+      end
+      @vector_batch = []
+      @store_pins_batch.clear
+      @comment_batch.clear
+    end
 
-	# process_response
-	#   This method will process a server response.  Send log info to the output,
-	#   keep track of fail count and captured data
-	def process_response(response, output_file = '')
-	  if response.is_a?(Array)
-	    #if called from finalize_pattern -> synchronize, open the output_file and store results
-		output_obj = nil
-		output_obj = File.open(output_file, 'a+') unless output_file == ''
-	    response.each_index do |index| 
-		  #restore store pins state for processing
-		  if @store_pins_batch.key?(index)
-		    @store_pins = @store_pins_batch[index]
-		  else
-			@store_pins = []
-		  end
-		  if @comment_batch.key?(index)
-		    unless output_file == ''
-		      #get the header placed correctly
-			  if index == response.length - 1
-			    output_obj.puts "last comment"
-			    output_obj.lineno = 0
-			  end
-			  output_obj.puts(@comment_batch[index])
-			end
-		  end
-		  process_vector_response(response[index], output_obj)
-		end
-		output_obj.close unless output_file == ''
-	  else
-	    process_vector_response(response)
-	  end
-	end
-	
-	# process_vector_response
-	#   This method exists to prevent code duplication when handling an array of
-	#   batched responses versus a single response string.
-	def process_vector_response (vector_response, output_obj = nil)
+    # process_response
+    #   This method will process a server response.  Send log info to the output,
+    #   keep track of fail count and captured data
+    def process_response(response, output_file = '')
+      if response.is_a?(Array)
+        # if called from finalize_pattern -> synchronize, open the output_file and store results
+        output_obj = nil
+        output_obj = File.open(output_file, 'a+') unless output_file == ''
+        response.each_index do |index|
+          # restore store pins state for processing
+          if @store_pins_batch.key?(index)
+            @store_pins = @store_pins_batch[index]
+          else
+            @store_pins = []
+          end
+          if @comment_batch.key?(index)
+            unless output_file == ''
+              # get the header placed correctly
+              if index == response.length - 1
+                output_obj.puts 'last comment'
+                output_obj.lineno = 0
+              end
+              output_obj.puts(@comment_batch[index])
+            end
+          end
+          process_vector_response(response[index], output_obj)
+        end
+        output_obj.close unless output_file == ''
+      else
+        process_vector_response(response)
+      end
+    end
+
+    # process_vector_response
+    #   This method exists to prevent code duplication when handling an array of
+    #   batched responses versus a single response string.
+    def process_vector_response(vector_response, output_obj = nil)
       unless @store_pins.empty?
         msg = "  (Captured #{@store_pins.map(&:name).join(', ')})\n"
         capture_data(vector_response)
         vector_response.strip!
         vector_response += msg
       end
-	  if output_obj.nil?
+      if output_obj.nil?
         microcode vector_response
-	  else
-	    output_obj.puts(vector_response)
-	  end
+      else
+        output_obj.puts(vector_response)
+      end
 
       unless vector_response.chr == 'P'
         # TODO: Put this back with an option to disable, based on a serial or parallel interface being used
         # microcode 'E:' + @previous_vectordata + ' //expected data for previous vector'
         @fail_count += 1
       end
-	end
-	
+    end
+
     # initialize_pattern
     #   This method sets initializes variables at the start of a pattern.
     #   it is called automatically when pattern generation starts.
     def initialize_pattern
       @fail_count = 0
       @vector_count = 0
-	  @vector_batch.delete_if { true }
-	  @store_pins_batch.clear
-	  @comment_batch.clear
+      @vector_batch.delete_if { true }
+      @store_pins_batch.clear
+      @comment_batch.clear
 
       @total_packets = 0
       @total_comm_time = 0
@@ -298,16 +297,16 @@ puts d[0].to_s(2)
       if @pinmap.nil?
         Origen.log.error('pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
       else
-        Origen.log.info('executing pattern with pinmap:' + @pinmap.to_s)
+        Origen.log.debug('executing pattern with pinmap:' + @pinmap.to_s)
       end
     end
-	
+
     # finalize_pattern
     #   This method flushes the final vector.  Then, it logs success or failure of the
     #   pattern execution along with execution time information.
     def finalize_pattern(output_file)
-	  Origen.log.debug('Pattern generation completed. Sending all stored vector data')
-	  synchronize(output_file)
+      Origen.log.debug('Pattern generation completed. Sending all stored vector data')
+      synchronize(output_file)
       # for debug, report communication times
       Origen.log.debug("total communication time: #{@total_comm_time}")
       Origen.log.debug("total connect time: #{@total_connect_time}")
