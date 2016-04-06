@@ -237,6 +237,7 @@ module OrigenLink
           else
             @store_pins = []
           end
+          process_vector_response(response[index], output_obj)
           if @comment_batch.key?(index)
             unless output_file == ''
               # get the header placed correctly
@@ -247,7 +248,6 @@ module OrigenLink
               output_obj.puts(@comment_batch[index])
             end
           end
-          process_vector_response(response[index], output_obj)
         end
         output_obj.close unless output_file == ''
       else
@@ -265,10 +265,20 @@ module OrigenLink
         vector_response.strip!
         vector_response += msg
       end
+      vector_cycles = vector_response.split(/\s+/)
+      expected_msg = ''
+      expected_msg = ' ' + vector_cycles.pop if vector_cycles[vector_cycles.length - 1] =~ /Expected/
+      prepend = ''
       if output_obj.nil?
-        microcode vector_response
+        vector_cycles.each do |cycle|
+          microcode prepend + cycle + expected_msg
+          prepend = ' :'
+        end
       else
-        output_obj.puts(vector_response)
+        vector_cycles.each do |cycle|
+          output_obj.puts(prepend + cycle + expected_msg)
+          prepend = ' :'
+        end
       end
 
       unless vector_response.chr == 'P'
