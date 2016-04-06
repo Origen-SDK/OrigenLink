@@ -264,11 +264,17 @@ module OrigenLink
           end
           # process time 2 events
           response = process_events(@cycletiming[tset]['timing'][2], pindata).merge(response)
-          if (count == 0) || (@cycle_failure)
-            message = ''
-            @patternorder.each do |pin|
-              message += response[pin]
-            end
+          # changing response format to return all data for easier debug, below is original method
+          # TODO: remove the commented code once return format and delay handling is finalized
+          # if (count == 0) || (@cycle_failure)
+          #  message = ''
+          #  @patternorder.each do |pin|
+          #    message += response[pin]
+          #  end
+          # end
+          message = message + ' ' unless count == 0
+          @patternorder.each do |pin|
+            message += response[pin]
           end
         end # end cycle through repeats
         if @cycle_failure
@@ -276,7 +282,9 @@ module OrigenLink
         else
           rtnmsg = 'P:' + message
         end
-        rtnmsg += '    Repeat ' + repeat_count.to_s if repeat_count > 1
+        # no need to return repeat count since all data is returned
+        # TODO: remove the commented code once return format and delay handling is finalized
+        # rtnmsg += '    Repeat ' + repeat_count.to_s if repeat_count > 1
         rtnmsg
       end
 
