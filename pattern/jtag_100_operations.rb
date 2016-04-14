@@ -1,4 +1,4 @@
-Pattern.create(options={:name => "JTAG_Test"})do
+Pattern.create(options={:name => "JTAG_Test_100ops"})do
   $dut.jtag.reset
   $dut.jtag.idle
   1.upto(50) do

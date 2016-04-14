@@ -175,6 +175,10 @@ module OrigenLink
         # if called from finalize_pattern -> synchronize, open the output_file and store results
         output_obj = nil
         output_obj = File.open(output_file, 'a+') unless output_file == ''
+
+        # in case there were only comments and no vectors, place comments (if any)
+        microcode @comment_batch[0] if response.size == 0
+
         response.each_index do |index|
           # restore store pins state for processing
           if @store_pins_batch.key?(index)
@@ -184,12 +188,14 @@ module OrigenLink
           end
           process_vector_response(response[index], output_obj)
           if @comment_batch.key?(index)
-            unless output_file == ''
-              # get the header placed correctly
-              if index == response.length - 1
-                output_obj.puts 'last comment'
-                output_obj.lineno = 0
-              end
+            if output_file == ''
+              microcode @comment_batch[index]
+            else
+              # get the header placed correctly, the below code doesn't work
+              # if index == response.length - 1
+              #   output_obj.puts 'last comment'
+              #   output_obj.lineno = 0
+              # end
               output_obj.puts(@comment_batch[index])
             end
           end
@@ -292,6 +298,33 @@ module OrigenLink
     #   plug in supports the method link?.
     def to_s
       'OrigenLink::VectorBased'
+    end
+
+    # transaction
+    #   returns true/false indicating whether the transaction passed
+    #   true = pass
+    #   false = fail
+    #
+    # TODO: capture transaction vector data and response for use in debug
+    #
+    # if !tester.transaction {dut.reg blah blah}
+    #   puts 'transaction failed'
+    # end
+    def transaction
+      if block_given?
+        synchronize
+        transaction_fail_count = @fail_count
+        yield
+        synchronize
+        transaction_fail_count = @fail_count - transaction_fail_count
+        if transaction_fail_count == 0
+          true
+        else
+          false
+        end
+      else
+        true
+      end
     end
   end
 end
