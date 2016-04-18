@@ -66,6 +66,8 @@ module OrigenLink
       @store_pins_batch = {}
       @comment_batch = {}
       @batch_vectors = true
+      @pattern_link_messages = []
+      @pattern_comments = {}
     end
 
     # push_comment
@@ -79,6 +81,8 @@ module OrigenLink
         else
           @comment_batch[key] = msg
         end
+        pattern_key = @pattern_link_messages.length + key
+        @pattern_comments[pattern_key] = @comment_batch[key]
       else
         microcode msg
       end
@@ -248,6 +252,8 @@ module OrigenLink
       @vector_batch.delete_if { true }
       @store_pins_batch.clear
       @comment_batch.clear
+      @pattern_link_messages.delete_if { true }
+      @pattern_comments.clear
 
       @total_packets = 0
       @total_comm_time = 0
@@ -287,6 +293,15 @@ module OrigenLink
       else
         # Origen.log.error("FAIL - pattern execution failed (#{@fail_count} failures)")
         Origen.app.stats.report_fail
+      end
+      commands_file = Origen.app.current_job.output_file.split('.')[0] + '_link_cmds.txt'
+      File.open(commands_file,'w') do |file|
+        file.puts("pin_assign:#{@pinmap}")
+        file.puts("pin_patternorder:#{@pinorder}")
+        @pattern_link_messages.each_index do |index|
+          file.puts(@pattern_link_messages[index])
+          file.puts(@pattern_comments[index]) if @pattern_comments.key?(index)
+        end
       end
     end
 

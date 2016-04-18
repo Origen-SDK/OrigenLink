@@ -45,6 +45,7 @@ module OrigenLink
       @max_receive_time = (t4 - t3) if @max_receive_time < (t4 - t3)
       @total_packets += 1
       Origen.log.error 'nil response from server (likely died) for command(' + cmdstr + ':' + argstr + ')' if response.nil?
+      @pattern_link_messages << "#{cmdstr}:#{argstr}"
       response    # ensure the response is passed along
     end
 
@@ -72,6 +73,7 @@ module OrigenLink
       @total_recv_time += (t4 - t3)
       @max_receive_time = (t4 - t3) if @max_receive_time < (t4 - t3)
       @total_packets += 1
+      @pattern_link_messages.concat(vector_batch)
       response
     end
 
