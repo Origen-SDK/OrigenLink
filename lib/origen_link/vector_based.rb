@@ -295,7 +295,7 @@ module OrigenLink
         Origen.app.stats.report_fail
       end
       commands_file = Origen.app.current_job.output_file.split('.')[0] + '_link_cmds.txt'
-      File.open(commands_file,'w') do |file|
+      File.open(commands_file, 'w') do |file|
         file.puts("pin_assign:#{@pinmap}")
         file.puts("pin_patternorder:#{@pinorder}")
         @pattern_link_messages.each_index do |index|
