@@ -223,16 +223,30 @@ module OrigenLink
       vector_cycles = vector_response.split(/\s+/)
       expected_msg = ''
       expected_msg = ' ' + vector_cycles.pop if vector_cycles[vector_cycles.length - 1] =~ /Expected/
-      prepend = ''
-      if output_obj.nil?
-        vector_cycles.each do |cycle|
-          microcode prepend + cycle + expected_msg
-          prepend = ' :'
+      pfstatus = vector_cycles[0].chr
+      vector_cycles[0] = vector_cycles[0].byteslice(2, vector_cycles[0].length - 2)
+
+      vector_cycles.each do |cycle|
+        thiscyclefail = false
+        if pfstatus == 'F'
+          # check to see if this cycle failed
+          0.upto(cycle.length - 1) do |index|
+            thiscyclefail = true if (cycle[index] == 'H') && (expected_msg[expected_msg.length - cycle.length + index] == 'L')
+            thiscyclefail = true if (cycle[index] == 'L') && (expected_msg[expected_msg.length - cycle.length + index] == 'X')
+          end
         end
-      else
-        vector_cycles.each do |cycle|
-          output_obj.puts(prepend + cycle + expected_msg)
-          prepend = ' :'
+        if thiscyclefail
+          expected_msg_prnt = expected_msg
+          prepend = 'F:'
+        else
+          expected_msg_prnt = ''
+          prepend = 'P:'
+        end
+
+        if output_obj.nil?
+          microcode prepend + cycle + expected_msg_prnt
+        else
+          output_obj.puts(prepend + cycle + expected_msg_prnt)
         end
       end
 
