@@ -2,41 +2,7 @@
 # using exported file objects.  If the pin is not exported, it
 # will be exported when a pin is initialized
 #
-# initialize:
-#  description - This method will execute system command
-#                "sudo echo ionumber > /sys/class/gpio/export"
-#                to create the IO file interface.  It will
-#                set the direction, initial pin state and initialize
-#                instance variables
-#  ionumber - required, value indicating the pin number (BCM IO number,
-#             not the header pin number)
-#  direction - optional, specifies the pin direction.  A pin is
-#              initialized as an input if a direction isn't specified.
-#
-#
-#  out:
-#    description - Sets the output state of the pin.  If the pin
-#                  is setup as an input, the direction will first
-#                  be changed to output.
-#
-#
-#  in:
-#    description - Reads and returns state of the pin.  If the pin
-#                  is setup as an output, the direction will first
-#                  be changed to input.
-#
-#
-#  update_direction:
-#    description - Sets the pin direction
-#
-#  direction - specifies the pin direction.  A pin is
-#              initialized as an input if a direction isn't specified.
-#
-#  Valid direction values:
-#    :in	-	input
-#    :out	-	output
-#    :out_high	-	output, initialized high
-#    :out_low	-	output, initialized low
+
 module OrigenLink
   module Server
     class Pin
@@ -47,6 +13,17 @@ module OrigenLink
 
       attr_reader :gpio_valid
 
+      # initialize:
+      #  description - This method will execute system command
+      #                "sudo echo ionumber > /sys/class/gpio/export"
+      #                to create the IO file interface.  It will
+      #                set the direction, initial pin state and initialize
+      #                instance variables
+      #  ionumber - required, value indicating the pin number (BCM IO number,
+      #             not the header pin number)
+      #  direction - optional, specifies the pin direction.  A pin is
+      #              initialized as an input if a direction isn't specified.
+      #
       def initialize(ionumber, direction = :in)
         @ionumber = Integer(ionumber)
         @pin_dir_name = "#{Server.gpio_dir}/gpio#{@ionumber}/direction"
@@ -83,6 +60,11 @@ module OrigenLink
         end
       end
 
+      #  out:
+      #    description - Sets the output state of the pin.  If the pin
+      #                  is setup as an input, the direction will first
+      #                  be changed to output.
+      #
       def out(value)
         if @gpio_valid
           if @direction == :in
@@ -93,6 +75,11 @@ module OrigenLink
         end
       end
 
+      #  in:
+      #    description - Reads and returns state of the pin.  If the pin
+      #                  is setup as an output, the direction will first
+      #                  be changed to input.
+      #
       def in
         if @gpio_valid
           if @direction == :out
@@ -108,6 +95,15 @@ module OrigenLink
         end
       end
 
+      #  update_direction:
+      #    description - Sets the pin direction
+      #
+      #  direction - specifies the pin direction.  A pin is
+      #              initialized as an input if a direction isn't specified.
+      #
+      #  Valid direction values:
+      #    :in	-	input
+      #    :out	-	output
       def update_direction(direction)
         if @gpio_valid
           @pin_dir_obj.pos = 0
