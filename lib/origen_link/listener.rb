@@ -44,7 +44,7 @@ module OrigenLink
       target_object.class.to_s
     end
 
-    post '/write_register' do
+    post '/register' do
       t = target_object
       expand_path(params[:path]) do |method, arg|
         if arg
@@ -55,6 +55,19 @@ module OrigenLink
       end
       t.write!(params[:data].to_i)
       nil
+    end
+
+    get '/register' do
+      t = target_object
+      expand_path(params[:path]) do |method, arg|
+        if arg
+          t = t.send(method, arg)
+        else
+          t = t.send(method)
+        end
+      end
+      t.sync
+      t.data.to_s
     end
   end
 end
