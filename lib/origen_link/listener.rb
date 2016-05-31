@@ -5,12 +5,17 @@ module OrigenLink
       @port || 20_020
     end
 
+    def self.environment
+      @environment || :production
+    end
+
     def self.target_object
       @target_object || dut
     end
 
     def self.run!(options = {})
-      @port = options[:port] if options[:port]
+      @port = options[:port]
+      @environment = options[:environment]
       @target_object = options[:dut]
       super
     end
