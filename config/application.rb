@@ -40,6 +40,10 @@ class OrigenLinkApplication < Origen::Application
 
   config.semantically_version = true
 
+  config.shared = {
+    command_launcher: 'config/shared_commands.rb'
+  }
+
   # An example of how to set application specific LSF parameters
   #config.lsf.project = "msg.te"
   
