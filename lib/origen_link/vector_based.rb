@@ -1,3 +1,4 @@
+require 'etc'
 require 'origen_testers'
 require 'origen_link/server_com'
 require 'origen_link/capture_support'
@@ -39,6 +40,7 @@ module OrigenLink
     attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time
     attr_reader :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed, :captured_data
     attr_reader :vector_batch, :store_pins_batch, :comment_batch
+    attr_reader :user_name, :initial_comm_sent
 
     def initialize(address, port, options = {})
       @address = address
@@ -68,6 +70,8 @@ module OrigenLink
       @batch_vectors = true
       @pattern_link_messages = []
       @pattern_comments = {}
+      @user_name = Etc.getlogin
+      @initial_comm_sent = false
     end
 
     # push_comment
@@ -288,6 +292,7 @@ module OrigenLink
     def finalize_pattern(output_file)
       Origen.log.debug('Pattern generation completed. Sending all stored vector data')
       synchronize(output_file)
+      send_cmd('', 'session_end')
       # for debug, report communication times
       Origen.log.debug("total communication time: #{@total_comm_time}")
       Origen.log.debug("total connect time: #{@total_connect_time}")
@@ -316,6 +321,7 @@ module OrigenLink
           file.puts(@pattern_link_messages[index])
           file.puts(@pattern_comments[index]) if @pattern_comments.key?(index)
         end
+        file.puts(':session_end')
       end
     end
 

@@ -17,23 +17,46 @@ module OrigenLink
     def send_cmd(cmdstr, argstr)
       # objects have to be created outside of the block
       # to be accessible outside of the block
+      t1 = 0
       t2 = 0
       t3 = 0
       t4 = 0
       t5 = 0
       response = ''
-      t1 = Time.now
+      user_status = ''
+      success = false
 
-      # open a connection to the server, send the command and wait for a response
-      TCPSocket.open(@address, @port) do |link|
-        t2 = Time.now
-        link.write(cmdstr + ':' + argstr + "\n\n")
-        t3 = Time.now
-        response = link.gets
-        t4 = Time.now
+      until success
+        t1 = Time.now
+
+        # open a connection to the server, send the command and wait for a response
+        TCPSocket.open(@address, @port) do |link|
+          t2 = Time.now
+          link.write(@user_name + "\n" + cmdstr + ':' + argstr + "\n\n")
+          t3 = Time.now
+          user_status = link.gets
+          response = link.gets
+          t4 = Time.now
+        end
+
+        t5 = Time.now
+
+        if @initial_comm_sent && ((user_status =~ /user_change/) || (response =~ /Busy:/))
+          # there has been a collision
+          Origen.log.error 'A collision (another user interrupted your link session) has occured'
+          Origen.log.error "When using debug mode ensure that you don't exceed the 20 minute communication time out"
+          exit
+        end
+
+        if response =~ /Busy:/
+          Origen.log.error response + ' retry in 1 second'
+          sleep(1)
+        else
+          success = true
+          @initial_comm_sent = true
+        end
       end
 
-      t5 = Time.now
       @total_comm_time += (t5 - t1)
       if @max_packet_time < (t5 - t1)
         @max_packet_time = (t5 - t1)
@@ -50,23 +73,47 @@ module OrigenLink
     end
 
     def send_batch(vector_batch)
-      t2 = 0
-      t3 = 0
-      t4 = 0
-      t5 = 0
-      response = []
-      t1 = Time.now
-      TCPSocket.open(@address, @port) do |link|
-        t2 = Time.now
-        vector_batch_str = vector_batch.join("\n") + "\n\n"
-        link.write(vector_batch_str)
-        t3 =  Time.now
-        while line = link.gets
-          response << line.chomp
+      vector_batch_str = @user_name + "\n" + vector_batch.join("\n") + "\n\n"
+      user_status = ''
+      success = false
+
+      until success
+        t1 = 0
+        t2 = 0
+        t3 = 0
+        t4 = 0
+        t5 = 0
+        response = []
+        t1 = Time.now
+        TCPSocket.open(@address, @port) do |link|
+          t2 = Time.now
+          link.write(vector_batch_str)
+          t3 =  Time.now
+          while line = link.gets
+            response << line.chomp
+          end
+          t4 = Time.now
         end
-        t4 = Time.now
+        t5 = Time.now
+
+        user_status = response.delete_at(0)
+        if @initial_comm_sent && ((user_status =~ /user_change/) || (response[0] =~ /Busy:/))
+          # there has been a collision
+          Origen.log.error 'A collision (another user interrupted your link session) has occured'
+          Origen.log.error "When using debug mode ensure that you don't exceed the 20 minute communication time out"
+          exit
+        end
+
+        if response[0] =~ /Busy:/
+          Origen.log.error response[0] + ' retry in 1 second'
+          sleep(1)
+        else
+          success = true
+          @initial_comm_sent = true
+        end
+
       end
-      t5 = Time.now
+
       @total_comm_time += (t5 - t1)
       @total_connect_time += (t2 - t1)
       @total_xmit_time += (t3 - t2)

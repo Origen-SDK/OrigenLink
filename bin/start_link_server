@@ -6,14 +6,60 @@ require 'origen_link/server/sequencer'
 server = TCPServer.open('', 12_777)
 puts 'server started'
 pinsequencer = OrigenLink::Server::Sequencer.new
+remoteuser = ''
+remotehost = ''
+sessionactivity = Time.now
+sessionactive = false
 
 loop do
   client = server.accept
-  response = ''
-  while (message = client.gets) != "\n"
-    # process the message
-    # for now only pin_ messages are accepted
-    response = response + pinsequencer.processmessage(message.chomp) + "\n"
+  thisuser = client.gets.chomp
+  thisremotehost = client.peeraddr[3]
+  
+  # for now assume that any session lasting longer than 20 minutes has timed out (will happen if the origen side app is killed or stopped at a breakpoint with no activity)
+  if (Time.now - sessionactivity) > 1200
+    sessionactive = false
+  end
+  
+  change_in_user = false
+  
+  # if there is no active session running allow one to start
+  unless sessionactive
+    #flag any change in host machine or user for collision detection
+    change_in_user = true unless (remoteuser.eql? thisuser) && (remotehost.eql? thisremotehost)
+    remoteuser = thisuser
+    remotehost = thisremotehost
+  end
+  
+  # always return whether or not the user has been changed (for collision detection)
+  if change_in_user
+    response = "user_change:user_change\n"
+  else
+    response = "\n"
+  end
+  
+  # if this connection is from the active user\host machine, then process the information
+  if (remoteuser.eql? thisuser) && (remotehost.eql? thisremotehost)
+    while (message = client.gets) != "\n"
+      # process the message
+      # for now only pin_ messages are accepted
+      if message =~ /session_end/
+        sessionactive = false
+        response = response + "session_end:session_end\n"
+      else
+        sessionactive = true
+        response = response + pinsequencer.processmessage(message.chomp) + "\n"
+      end
+    end
+    sessionactivity = Time.now
+  else
+    checkmessage = client.gets.chomp
+    if checkmessage =~ /session_kill/
+      sessionactive = false
+      response = response + "Terminated: session from #{remoteuser} at IP address #{remotehost} inactive for #{Time.now - sessionactivity} seconds has been killed\n"
+    else
+      response = response + "Busy: server is in use by #{remoteuser} from IP address #{remotehost}\n"
+    end
   end
   client.write(response)
   client.close
