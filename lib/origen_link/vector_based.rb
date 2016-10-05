@@ -236,7 +236,7 @@ module OrigenLink
           # check to see if this cycle failed
           0.upto(cycle.length - 1) do |index|
             thiscyclefail = true if (cycle[index] == 'H') && (expected_msg[expected_msg.length - cycle.length + index] == 'L')
-            thiscyclefail = true if (cycle[index] == 'L') && (expected_msg[expected_msg.length - cycle.length + index] == 'X')
+            thiscyclefail = true if (cycle[index] == 'L') && (expected_msg[expected_msg.length - cycle.length + index] == 'H')
           end
         end
         if thiscyclefail
