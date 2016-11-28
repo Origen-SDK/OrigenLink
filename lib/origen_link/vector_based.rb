@@ -218,11 +218,12 @@ module OrigenLink
     #   This method exists to prevent code duplication when handling an array of
     #   batched responses versus a single response string.
     def process_vector_response(vector_response, output_obj = nil)
+      msg = ''
       unless @store_pins.empty?
         msg = "  (Captured #{@store_pins.map(&:name).join(', ')})\n"
         capture_data(vector_response)
         vector_response.strip!
-        vector_response += msg
+        #vector_response += msg
       end
       vector_cycles = vector_response.split(/\s+/)
       expected_msg = ''
@@ -248,9 +249,9 @@ module OrigenLink
         end
 
         if output_obj.nil?
-          microcode prepend + cycle + expected_msg_prnt
+          microcode prepend + cycle + expected_msg_prnt + msg
         else
-          output_obj.puts(prepend + cycle + expected_msg_prnt)
+          output_obj.puts(prepend + cycle + expected_msg_prnt + msg)
         end
       end
 
