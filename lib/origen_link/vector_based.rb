@@ -223,7 +223,7 @@ module OrigenLink
         msg = "  (Captured #{@store_pins.map(&:name).join(', ')})\n"
         capture_data(vector_response)
         vector_response.strip!
-        #vector_response += msg
+        # vector_response += msg
       end
       vector_cycles = vector_response.split(/\s+/)
       expected_msg = ''
