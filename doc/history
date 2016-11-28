@@ -1,3 +1,15 @@
+<a class="anchor release_tag" name="v0_2_0"></a>
+<h1><a href="#v0_2_0">Tag: v0.2.0</a></h1>
+
+##### Branch: 'master'
+
+##### by pderouen on 28-Nov-2016 15:41PM
+
+
+Fixed 2 bugs:
+1) Expect "L" previously always reported a PASS
+2) Fixed capture comment placement
+
 <a class="anchor release_tag" name="v0_2_0_pre0"></a>
 <h2><a href="#v0_2_0_pre0">Tag: v0.2.0.pre0</a></h2>
 
