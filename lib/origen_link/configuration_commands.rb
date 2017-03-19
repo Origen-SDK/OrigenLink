@@ -29,6 +29,21 @@ module OrigenLink
       setup_cmd_response_logger('pin_patternorder', response)
     end
 
+    # set_pinorder
+    #   This method is called if the app has not explicitly set the pin order
+    #   for the Link server using pinorder= (above)
+    #
+    #   Origen.app.pin_pattern_order is read to get the pin pattern order
+    #   and pass it to pinorder=
+    def set_pinorder
+      pinlist = ''
+      Origen.app.pin_pattern_order.each do |pin|
+        pinlist = pinlist + ',' unless pinlist.length == 0
+        pinlist = pinlist + pin.to_s unless pin.is_a?(Hash)
+      end
+      self.pinorder = pinlist
+    end
+
     # pinformat=
     #   This method is used to setup the pin clock format on the debugger device.
     #   The supported formats are rl and rh
