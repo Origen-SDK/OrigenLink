@@ -37,9 +37,18 @@ module OrigenLink
     #   and pass it to pinorder=
     def set_pinorder
       pinlist = ''
-      Origen.app.pin_pattern_order.each do |pin|
-        pinlist = pinlist + ',' unless pinlist.length == 0
-        pinlist = pinlist + pin.to_s unless pin.is_a?(Hash)
+      ordered_pins_cache.each do |pin|
+        unless pin.is_a?(Hash)
+          if pin.size == 1
+            pinlist = pinlist + ',' unless pinlist.length == 0
+            pinlist = pinlist + pin.name.to_s
+          else
+            dut.pins(pin.id).map.each do |sub_pin|
+              pinlist = pinlist + ',' unless pinlist.length == 0
+              pinlist = pinlist + sub_pin.name.to_s
+            end
+          end
+        end
       end
       self.pinorder = pinlist
     end
