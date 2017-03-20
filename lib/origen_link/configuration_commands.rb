@@ -56,6 +56,42 @@ module OrigenLink
       setup_cmd_response_logger('pin_timing', response)
     end
 
+    # process_timeset(tset)
+    #   This method will check the pin timing api for the current timeset.
+    #   If the timset is programmed, it will be processed into the Link
+    #   timing format, registered, and sent to the server.
+    #   Else, a warning message will be displayed
+    def process_timeset(tset)
+      # Check to see if this timeset has been programmed
+      if false
+        # Timeset has been programmed
+        # Check for any return format pins first
+        # Identify the pins that are operated on before the clock drive edge
+        # Identify pins operated on between drive and return edge
+        # Identify pins operated on after the return edge
+        # self.pinformat = 'func_25mhz,tclk,rl'
+        # self.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'
+      else
+        # Timset has not been programmed through the pin timing api
+        tset_warning(tset)
+      end
+    end
+
+    # tset_warning(tset)
+    #   This method is used to display a no timing info warning.
+    #   The warning is displayed only once per tset that is
+    #   encountered
+    def tset_warning(tset)
+      unless @tsets_warned.key?(tset)
+        Origen.log.warn("No timing information provided for timeset :#{tset}")
+        Origen.log.warn('Default timing will be used (pin operations are in pattern order)')
+        Origen.log.warn('Specify timing through the timing api or by using:')
+        Origen.log.warn("  tester.pinformat = 'func_25mhz,tclk,rl'")
+        Origen.log.warn("  tester.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'")
+        @tsets_warned[tset] = true
+      end
+    end
+
     # replace_tset_name_w_number(csl)
     #  This method is used by pinformat= and pintiming=
     #  This method receives a comma separated list of arguments

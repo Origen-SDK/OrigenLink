@@ -58,6 +58,7 @@ module OrigenLink
       @max_packet_time = 0
       @max_receive_time = 0
       @tsets_programmed = {}
+      @tsets_warned = {}
       @tset_count = 1
       @store_pins = []
       @captured_data = []
@@ -140,7 +141,15 @@ module OrigenLink
         if @tsets_programmed[@previous_tset]
           tset_prefix = "tset#{@tsets_programmed[@previous_tset]},"
         else
-          tset_prefix = ''
+          # The hash of programmed tsets does not contain this tset
+          # Check the timing api to see if there is timing info there
+          # and send the timing info to the link server
+          if dut.respond_to?(:timeset)
+            process_timeset(tset)
+          else
+            tset_warning(tset)
+            tset_prefix = ''
+          end
         end
 
         if @batch_vectors
