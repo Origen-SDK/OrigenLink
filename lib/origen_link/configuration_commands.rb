@@ -71,9 +71,12 @@ module OrigenLink
         # Identify pins operated on after the return edge
         # self.pinformat = 'func_25mhz,tclk,rl'
         # self.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'
+        # return the tset number from the tset hash (setup by .pinformat and .pintiming)
+        "tset#{@tsets_programmed[tset]},"
       else
         # Timset has not been programmed through the pin timing api
         tset_warning(tset)
+        ''	# return empty string on failure
       end
     end
 

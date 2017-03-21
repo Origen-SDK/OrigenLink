@@ -1,3 +1,5 @@
+require 'origen_jtag'
+
 module OrigenLink
   module Test
     class TopLevelController

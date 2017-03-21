@@ -145,7 +145,7 @@ module OrigenLink
           # Check the timing api to see if there is timing info there
           # and send the timing info to the link server
           if dut.respond_to?(:timeset)
-            process_timeset(tset)
+            tset_prefix = process_timeset(tset)
           else
             tset_warning(tset)
             tset_prefix = ''
