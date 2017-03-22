@@ -98,7 +98,7 @@ module OrigenLink
         when 'pin_timing'
           pin_timing(command[1])
         when 'version'
-          @version
+          "P:#{@version}"
         else
           'Error Invalid command: ' + command[0].to_s
         end
