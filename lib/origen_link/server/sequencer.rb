@@ -34,6 +34,11 @@ require 'origen_link/server/pin'
 #        timing is stored in a timeset hash
 #        first argument is the timeset key
 #        ex: "pin_timing:1,tdi,0,tdo,1,tms,0
+#
+#      version (check version of app server is
+#        running)
+#        ex: "version:"
+#        response ex: "P:0.2.0.pre0"
 ##################################################
 module OrigenLink
   module Server
@@ -46,6 +51,7 @@ module OrigenLink
     end
 
     class Sequencer
+      attr_accessor :version
       attr_reader :pinmap
       attr_reader :patternorder
       attr_reader :cycletiming
@@ -61,6 +67,7 @@ module OrigenLink
         @patternpinindex = Hash.new(-1)
         @patternorder = []
         @cycletiming = Hash.new(-1)
+        @version = ''
       end
 
       ##################################################
@@ -90,6 +97,8 @@ module OrigenLink
           pin_format(command[1])
         when 'pin_timing'
           pin_timing(command[1])
+        when 'version'
+          @version
         else
           'Error Invalid command: ' + command[0].to_s
         end
