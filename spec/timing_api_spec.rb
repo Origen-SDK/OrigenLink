@@ -19,11 +19,25 @@ describe 'Timing API interpreter' do
     Origen.target.load!
     tester.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
     tester.pinorder = 'tck, tdo, tms, tdi'
-    tester.set_timeset("nvmbist", 40)
     tester.message = ''
-debugger
-    tester.cycle
-    tester.message.should == ''
+    tester.set_timeset('tp0', 40)
+    dut.timeset :tp0 do |t|
+      t.wave :tck do |w|
+        w.drive :data, at: 20
+      end
+      t.wave :tdi, :tdo, :tms do |w|
+        w.drive :data, at: 5
+      end
+      t.wave do |w|
+        w.compare :data, at: 35
+      end
+    end
+    # temporarily force
+    dut.current_timeset_period = 40
+
+    dut.pin(:tdi).drive!(0)
+    dut.pin(:tdi).drive!(1)
+    tester.message.should == 'pin_timingv2:1,drive,5,data,tdo,tms,tdi;20,data,tck|compare,35,data,tck,tdo,tms,tdi'
   end
   
 end

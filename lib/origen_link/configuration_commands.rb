@@ -61,23 +61,74 @@ module OrigenLink
     #   If the timset is programmed, it will be processed into the Link
     #   timing format, registered, and sent to the server.
     #   Else, a warning message will be displayed
+    #
+    #   example generated command:
+    #     send_cmd('pin_timingv2', '2,drive,5,data,tck;10,data,tdi|compare,35,data,tck,tdo;5,data,tdi')
     def process_timeset(tset)
       # Check to see if this timeset has been programmed
-      if false
-        # Timeset has been programmed
-        # Check for any return format pins first
-        # Identify the pins that are operated on before the clock drive edge
-        # Identify pins operated on between drive and return edge
-        # Identify pins operated on after the return edge
-        # self.pinformat = 'func_25mhz,tclk,rl'
-        # self.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'
-        # return the tset number from the tset hash (setup by .pinformat and .pintiming)
-        "tset#{@tsets_programmed[tset]},"
-      else
+      if dut.timesets(tset.to_sym).nil?
         # Timset has not been programmed through the pin timing api
         tset_warning(tset)
         ''	# return empty string on failure
+      else
+        # Timeset has been programmed
+        # accumulate and sort drive events
+        drive_str = tset_argstr_from_events(dut.timesets(tset.to_sym).drive_waves)
+        
+        # accumulate and sort compare events
+        compare_str = tset_argstr_from_events(dut.timesets(tset.to_sym).compare_waves) 
+        
+        # construct the command argument string
+        argstr = get_tset_number(tset).to_s
+        if drive_str.length > 0
+          argstr = argstr + ',drive,' + drive_str
+          argstr = argstr + '|compare,' + compare_str if compare_str.length > 0
+        elsif compare_str.length > 0
+          argstr = argstr + ',compare,' + compare_str
+        else
+          fail "#{tset} timeset is programmed with no drive or compare edges"
+        end
+        
+        # send the timeset information to the server
+        response = send_cmd('pin_timingv2', argstr)
+        setup_cmd_response_logger('pin_timingv2', response)
+        
+        # return the tset number from the tset hash
+        "tset#{@tsets_programmed[tset]},"
       end
+    end
+    
+    # tset_argstr_from_events(timing_waves)
+    #   consume timing wave info and return command argstr format
+    #   output: 10,data,tdi,tms;15,data,tck;25,0,tck;35,data,tms
+    def tset_argstr_from_events(waves)
+      event_time = []
+      event_setting = {}
+      event_pins = {}
+      waves.each do |w|
+        # skip any events wave that does not have any associated pins
+        unless w.pins.size == 0
+          w.evaluated_events.each do |e|
+            event_key = e[0]				# time stamp for the event
+            event_time << event_key
+            event_setting[event_key] = e[1].to_s
+            
+            event_pins[event_key] = []
+            w.pins.each do |p|
+              event_pins[event_key] << p.id.to_s
+            end
+          end
+        end 
+      end
+      
+      # now sort the events into time order and build the tset argstr
+      event_time.sort!
+      rtnstr = ''
+      event_time.each do |event_key|
+        rtnstr = rtnstr + ';' unless rtnstr.length == 0
+        rtnstr = rtnstr + event_key.to_s + ',' + event_setting[event_key] + ',' + event_pins[event_key].uniq.join(',')
+      end
+      rtnstr
     end
 
     # tset_warning(tset)
