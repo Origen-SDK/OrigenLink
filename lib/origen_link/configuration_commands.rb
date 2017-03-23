@@ -74,10 +74,10 @@ module OrigenLink
         # Timeset has been programmed
         # accumulate and sort drive events
         drive_str = tset_argstr_from_events(dut.timesets(tset.to_sym).drive_waves)
-        
+
         # accumulate and sort compare events
-        compare_str = tset_argstr_from_events(dut.timesets(tset.to_sym).compare_waves) 
-        
+        compare_str = tset_argstr_from_events(dut.timesets(tset.to_sym).compare_waves)
+
         # construct the command argument string
         argstr = get_tset_number(tset).to_s
         if drive_str.length > 0
@@ -88,16 +88,16 @@ module OrigenLink
         else
           fail "#{tset} timeset is programmed with no drive or compare edges"
         end
-        
+
         # send the timeset information to the server
         response = send_cmd('pin_timingv2', argstr)
         setup_cmd_response_logger('pin_timingv2', response)
-        
+
         # return the tset number from the tset hash
         "tset#{@tsets_programmed[tset]},"
       end
     end
-    
+
     # tset_argstr_from_events(timing_waves)
     #   consume timing wave info and return command argstr format
     #   output: 10,data,tdi,tms;15,data,tck;25,0,tck;35,data,tms
@@ -112,15 +112,15 @@ module OrigenLink
             event_key = e[0]				# time stamp for the event
             event_time << event_key
             event_setting[event_key] = e[1].to_s
-            
+
             event_pins[event_key] = []
             w.pins.each do |p|
               event_pins[event_key] << p.id.to_s
             end
           end
-        end 
+        end
       end
-      
+
       # now sort the events into time order and build the tset argstr
       event_time.sort!
       rtnstr = ''
