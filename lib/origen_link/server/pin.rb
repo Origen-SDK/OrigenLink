@@ -12,6 +12,9 @@ module OrigenLink
       }
 
       attr_reader :gpio_valid
+      attr_accessor :pattern_data
+      attr_accessor :pattern_index
+      attr_accessor :response
 
       # initialize:
       #  description - This method will execute system command
@@ -49,6 +52,35 @@ module OrigenLink
           end
           @pin_val_obj = File.open(@pin_val_name, 'r+') if @gpio_valid
         end
+        @pattern_data = ''
+        @pattern_index = -1
+        @response = 'X'
+      end
+      
+      # data_is_drive?
+      #   returns whether the current pattern data is drive
+      def data_is_drive?
+        if @pattern_data == '1' || @pattern_data == '0'
+          true
+        else
+          false
+        end
+      end
+      
+      # data_is_compare?
+      #   returns whether the current pattern data is compare
+      def data_is_compare?
+        !data_is_drive?
+      end
+      
+      # load_pattern_data
+      #   Grab this pin's data character from the pattern data
+      def load_pattern_data(cycle)
+        if @pattern_index > -1
+          @pattern_data = cycle[@pattern_index]
+        else
+          @gpio_valid = false
+        end if
       end
 
       def destroy

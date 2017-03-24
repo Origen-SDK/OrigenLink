@@ -138,10 +138,28 @@ module OrigenLink
       ##################################################
       # new_timeset(tset)
       #   creates a new empty timeset hash
+      #
+      #   timing format:
+      #     ['events'] = [0, 5, 10, 35]
+      #     ['drive_event_data'] = {
+      #           0: 'data'
+      #          10: 'data'
+      #          35: '0'
+      #         }
+      #     ['drive_event_pins'] = {
+      #           0: [pin_obj1, pin_obj2]
+      #           etc.
+      #         }
       ##################################################
       def new_timeset(tset)
         @cycletiming[tset] = {}
-        @cycletiming[tset]['timing'] = [[], [], []]
+        @cycletiming[tset]['timing'] = [[], [], []]	# to be removed
+        # new format below
+        @cycletiming[tset]['events'] = []
+        @cycletiming[tset]['drive_event_data'] = {}
+        @cycletiming[tset]['drive_event_pins'] = {}
+        @cycletiming[tset]['compare_event_data'] = {}
+        @cycletiming[tset]['compare_event_pins'] = {}
       end
 
       ##################################################
@@ -150,6 +168,7 @@ module OrigenLink
       #     Should be <timeset>,<pin>,rl or rh
       #     multi-clock not currently supported
       #
+      #   TODO: update to store timset in new format
       ##################################################
       def pin_format(args)
         argarr = args.split(',')
@@ -182,6 +201,8 @@ module OrigenLink
       #   format pins are driven between 0 and 1 and
       #   return between 1 and 2.  Non-return pins are
       #   acted upon during the 0, 1 or 2 time period.
+      #
+      #   TODO: update to store timeset in new format
       ##################################################
       def pin_timing(args)
         argarr = args.split(',')
@@ -214,7 +235,9 @@ module OrigenLink
         end
         argarr.each do |pin|
           @patternorder << pin
-          @patternpinindex[pin] = index
+          @pinmap[pin].pattern_index = index	# pattern index stored in pin object now
+          @patternpinindex[pin] = index		# to be removed
+          # default timing will need to be updated to match new format
           @cycletiming[0]['timing'][0] << pin
           index += 1
         end
@@ -231,6 +254,8 @@ module OrigenLink
       #    sequenced.  Each pin object and pin data
       #    is passed to the "process_pindata" method
       #    for decoding and execution
+      #
+      #    TODO: re-write to use new timing format
       ##################################################
       def pin_cycle(args)
         # set default repeats and timeset
@@ -300,6 +325,9 @@ module OrigenLink
       ##################################################
       # process_events
       #   used by pin_cycle to avoid duplicating code
+      #
+      #   TODO: likely to remove after new pin_cycle
+      #     method is implemented
       ##################################################
       def process_events(events, pindata)
         response = {}
@@ -324,6 +352,8 @@ module OrigenLink
       #      drive 0: '0'
       #      drive 1: '1'
       #      read: anything else
+      #
+      #   TODO: rewrite to suit new pin_cycle method
       ##################################################
       def process_pindata(pin, data)
         if data == '0' || data == '1'
