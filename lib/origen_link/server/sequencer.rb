@@ -153,8 +153,6 @@ module OrigenLink
       ##################################################
       def new_timeset(tset)
         @cycletiming[tset] = {}
-        @cycletiming[tset]['timing'] = [[], [], []]	# to be removed
-        # new format below
         @cycletiming[tset]['events'] = []
         @cycletiming[tset]['drive_event_data'] = {}
         @cycletiming[tset]['drive_event_pins'] = {}
@@ -168,17 +166,27 @@ module OrigenLink
       #     Should be <timeset>,<pin>,rl or rh
       #     multi-clock not currently supported
       #
-      #   TODO: update to store timset in new format
       ##################################################
       def pin_format(args)
         argarr = args.split(',')
         tset_key = argarr.delete_at(0).to_i
         new_timeset(tset_key) unless @cycletiming.key?(tset_key)
-        @cycletiming[tset_key].delete('rl')
-        @cycletiming[tset_key].delete('rh')
+        @cycletiming[tset_key]['events'] += [1, 3]
+        @cycletiming[tset_key]['events'].sort!
+        [1, 3].each do |event|
+          @cycletiming[tset_key]['drive_event_pins'][event] = []
+        end
         0.step(argarr.length - 2, 2) do |index|
-          @cycletiming[tset_key][argarr[index + 1]] = [] unless @cycletiming[tset_key].key?(argarr[index + 1])
-          @cycletiming[tset_key][argarr[index + 1]] << argarr[index]
+          drive_type = argarr[index + 1]
+          pin_name = argarr[index]
+          @cycletiming[tset_key]['drive_event_data'][1] = 'data'
+          @cycletiming[tset-key]['drive_event_pins'][1] << @pinmap[pin_name]
+          @cycletiming[tset-key]['drive_event_pins'][3] << @pinmap[pin_name]
+          if drive_type = 'rl'
+            @cycletiming[tset_key]['drive_event_data'][3] = '0'
+          else
+            @cycletiming[tset_key]['drive_event_data'][3] = '1'
+          end
         end
         'P:'
       end
@@ -202,18 +210,42 @@ module OrigenLink
       #   return between 1 and 2.  Non-return pins are
       #   acted upon during the 0, 1 or 2 time period.
       #
-      #   TODO: update to store timeset in new format
       ##################################################
       def pin_timing(args)
         argarr = args.split(',')
         tset_key = argarr.delete_at(0).to_i
         new_timeset(tset_key) unless @cycletiming.key?(tset_key)
-        @cycletiming[tset_key]['timing'].each do |index|
-          index.delete_if { true }
+        [0, 2, 4].each do |event|
+          @cycletiming[tset_key]['drive_event_pins'][event] = []
+          @cycletiming[tset_key]['compare_event_pins'][event] = []
         end
+        
+        #process the information received
         0.step(argarr.length - 2, 2) do |index|
-          @cycletiming[tset_key]['timing'][argarr[index + 1].to_i] << argarr[index]
+          event = argarr[index + 1].to_i
+          # reorder event number to allow rising/falling edges
+          event *= 2
+          pin_name = argarr[index]
+          @cycletiming[tset_key]['events'] << event
+          @cycletiming[tset_key]['drive_event_data'][event] = 'data'
+          @cycletiming[tset_key]['drive_event_pins'][event] << @pinmap[pin_name]
+          @cycletiming[tset_key]['compare_event_data'][event] = 'data'
+          @cycletiming[tset_key]['compare_event_pins'][event] << @pinmap[pin_name]
         end
+        
+        # remove events with no associated pins
+        @cycletiming[tset_key]['events'].uniq!
+        @cycletiming[tset_key]['events'].sort!
+        [0, 2, 4].each do |event|
+          if @cycletiming[tset_key]['drive_event_pins'][event].size == 0
+            @cycletiming[tset_key]['events'] -= [event]
+            @cycletiming[tset_key]['drive_event_data'].delete(event)
+            @cycletiming[tset_key]['drive_event_pins'].delete(event)
+            @cycletiming[tset_key]['compare_event_data'].delete(event)
+            @cycletiming[tset_key]['compare_event_pins'].delete(event)
+          end
+        end
+        
         'P:'
       end
 
@@ -228,17 +260,18 @@ module OrigenLink
       def pin_patternorder(args)
         argarr = args.split(',')
         index = 0
-        if @cycletiming.key?(0)
-          @cycletiming[0]['timing'][0].delete_if { true }
-        else
-          new_timeset(0)
-        end
+        new_timeset(0)
         argarr.each do |pin|
           @patternorder << pin
           @pinmap[pin].pattern_index = index	# pattern index stored in pin object now
           @patternpinindex[pin] = index		# to be removed
-          # default timing will need to be updated to match new format
-          @cycletiming[0]['timing'][0] << pin
+          
+          # define default timing
+          @cycletiming[0]['events'] << index
+          @cycletiming[0]['drive_event_data'][index] = 'data'
+          @cycletiming[0]['drive_event_pins'][index] = [@pinmap[pin]]
+          @cycletiming[0]['compare_event_data'][index] = 'data'
+          @cycletiming[0]['compare_event_pins'][index] = [@pinmap[pin]]
           index += 1
         end
         'P:'
