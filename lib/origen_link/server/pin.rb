@@ -15,6 +15,7 @@ module OrigenLink
       attr_accessor :pattern_data
       attr_accessor :pattern_index
       attr_accessor :response
+      attr_accessor :cycle_failure
 
       # initialize:
       #  description - This method will execute system command
@@ -54,33 +55,79 @@ module OrigenLink
         end
         @pattern_data = ''
         @pattern_index = -1
-        @response = 'X'
+        @response = 'W'
+        @cycle_failure = false
+        @data_is_drive = false
       end
-      
+
       # data_is_drive?
       #   returns whether the current pattern data is drive
       def data_is_drive?
-        if @pattern_data == '1' || @pattern_data == '0'
-          true
-        else
-          false
-        end
+        @data_is_drive
       end
-      
+
       # data_is_compare?
       #   returns whether the current pattern data is compare
       def data_is_compare?
-        !data_is_drive?
+        !@data_is_drive
       end
-      
+
       # load_pattern_data
       #   Grab this pin's data character from the pattern data
       def load_pattern_data(cycle)
         if @pattern_index > -1
           @pattern_data = cycle[@pattern_index]
+          @response = 'W'
+          @cycle_failure = false
+          if @pattern_data == '1' || @pattern_data == '0'
+            @data_is_drive = true
+          else
+            @data_is_drive = false
+          end
         else
           @gpio_valid = false
-        end if
+        end
+      end
+
+      # process_event(event)
+      #   perform the requested pin operation and update the response (if required)
+      def process_event(operation, requested_action)
+        if operation == :drive
+          if data_is_drive?
+            if requested_action == 'data'
+              out(@pattern_data)
+              @response = @pattern_data
+            else
+              out(requested_action)
+            end # requested_action == 'data'
+          end # data_is_drive?
+        end # operation == :drive
+        if operation == :compare
+          if data_is_compare?
+            if requested_action == 'data'
+              case self.in
+                when '0'
+                  @cycle_failure = true if @pattern_data == 'H'
+                  if @pattern_data == 'X'
+                    @response = '.'
+                  else
+                    @response = 'L'
+                  end
+                # end of when '0'
+                when '1'
+                  @cycle_failure = true if @pattern_data == 'L'
+                  if @pattern_data == 'X'
+                    @response = '`'
+                  else
+                    @response = 'H'
+                  end
+                # end of when '1'
+                else
+                  @response = 'W'
+              end # case
+            end # requested_action == 'data'
+          end # data_is_compare?
+        end # operation == :compare
       end
 
       def destroy

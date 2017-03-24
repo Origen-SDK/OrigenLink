@@ -180,8 +180,8 @@ module OrigenLink
           drive_type = argarr[index + 1]
           pin_name = argarr[index]
           @cycletiming[tset_key]['drive_event_data'][1] = 'data'
-          @cycletiming[tset-key]['drive_event_pins'][1] << @pinmap[pin_name]
-          @cycletiming[tset-key]['drive_event_pins'][3] << @pinmap[pin_name]
+          @cycletiming[tset - key]['drive_event_pins'][1] << @pinmap[pin_name]
+          @cycletiming[tset - key]['drive_event_pins'][3] << @pinmap[pin_name]
           if drive_type = 'rl'
             @cycletiming[tset_key]['drive_event_data'][3] = '0'
           else
@@ -219,8 +219,8 @@ module OrigenLink
           @cycletiming[tset_key]['drive_event_pins'][event] = []
           @cycletiming[tset_key]['compare_event_pins'][event] = []
         end
-        
-        #process the information received
+
+        # process the information received
         0.step(argarr.length - 2, 2) do |index|
           event = argarr[index + 1].to_i
           # reorder event number to allow rising/falling edges
@@ -232,7 +232,7 @@ module OrigenLink
           @cycletiming[tset_key]['compare_event_data'][event] = 'data'
           @cycletiming[tset_key]['compare_event_pins'][event] << @pinmap[pin_name]
         end
-        
+
         # remove events with no associated pins
         @cycletiming[tset_key]['events'].uniq!
         @cycletiming[tset_key]['events'].sort!
@@ -245,7 +245,7 @@ module OrigenLink
             @cycletiming[tset_key]['compare_event_pins'].delete(event)
           end
         end
-        
+
         'P:'
       end
 
@@ -265,7 +265,7 @@ module OrigenLink
           @patternorder << pin
           @pinmap[pin].pattern_index = index	# pattern index stored in pin object now
           @patternpinindex[pin] = index		# to be removed
-          
+
           # define default timing
           @cycletiming[0]['events'] << index
           @cycletiming[0]['drive_event_data'][index] = 'data'
@@ -288,7 +288,6 @@ module OrigenLink
       #    is passed to the "process_pindata" method
       #    for decoding and execution
       #
-      #    TODO: re-write to use new timing format
       ##################################################
       def pin_cycle(args)
         # set default repeats and timeset
@@ -307,111 +306,41 @@ module OrigenLink
         end
 
         message = ''
-        pindata = args.split('')
-        @cycle_failure = false
+        # load pattern cycle data into pin objects
+        @pinmap.each { |p| p.load_pattern_data(args) }
+        cycle_failure = false
+
         0.upto(repeat_count - 1) do |count|
-          response = {}
-          # process time 0 events
-          response = process_events(@cycletiming[tset]['timing'][0], pindata)
-          # send drive data for return format pins
-          response = (process_events(@cycletiming[tset]['rl'], pindata)).merge(response)
-          response = (process_events(@cycletiming[tset]['rh'], pindata)).merge(response)
-          # process time 1 events
-          response = process_events(@cycletiming[tset]['timing'][1], pindata).merge(response)
-          # send return data
-          unless @cycletiming[tset]['rl'].nil?
-            @cycletiming[tset]['rl'].each do |pin|
-              process_pindata(@pinmap[pin], '0')
+          # process timing events
+          @cycletiming[tset]['events'].each do |event|
+            # process drive events
+            if @cycletiming[tset]['drive_event_pins'].key?(event)
+              @cycletiming[tset]['drive_event_pins'][event].each do |p|
+                p.process_event(:drive, @cycletiming[tset]['drive_event_data'][event])
+              end
             end
-          end
-          unless @cycletiming[tset]['rh'].nil?
-            @cycletiming[tset]['rh'].each do |pin|
-              process_pindata(@pinmap[pin], '1')
+
+            # process compare events
+            if @cycletiming[tset]['compare_event_pins'].key?(event)
+              @cycletiming[tset]['compare_event_pins'][event].each do |p|
+                p.process_event(:compare, @cycletiming[tset]['compare_event_data'][event])
+              end
             end
-          end
-          # process time 2 events
-          response = process_events(@cycletiming[tset]['timing'][2], pindata).merge(response)
-          # changing response format to return all data for easier debug, below is original method
-          # TODO: remove the commented code once return format and delay handling is finalized
-          # if (count == 0) || (@cycle_failure)
-          #  message = ''
-          #  @patternorder.each do |pin|
-          #    message += response[pin]
-          #  end
-          # end
-          message = message + ' ' unless count == 0
-          @patternorder.each do |pin|
-            message += response[pin]
-          end
-        end # end cycle through repeats
-        if @cycle_failure
+
+            # build response message
+            message += ' ' unless count == 0
+            @pinmap.each do |p|
+              message += p.response
+              cycle_failure = true if p.cycle_failure
+            end
+          end # event
+        end # count
+        if cycle_failure
           rtnmsg = 'F:' + message + '    Expected:' + args
         else
           rtnmsg = 'P:' + message
         end
-        # no need to return repeat count since all data is returned
-        # TODO: remove the commented code once return format and delay handling is finalized
-        # rtnmsg += '    Repeat ' + repeat_count.to_s if repeat_count > 1
         rtnmsg
-      end
-
-      ##################################################
-      # process_events
-      #   used by pin_cycle to avoid duplicating code
-      #
-      #   TODO: likely to remove after new pin_cycle
-      #     method is implemented
-      ##################################################
-      def process_events(events, pindata)
-        response = {}
-        unless events.nil?
-          events.each do |pin|
-            response[pin] = process_pindata(@pinmap[pin], pindata[@patternpinindex[pin]])
-          end
-        end
-        response
-      end
-
-      ##################################################
-      # process_pindata method
-      #    arguments:
-      #      pin: the pin object to be operated on
-      #      data: the pin data to be executed
-      #    returns: the drive data or read data
-      #
-      #    This method translates pin data into one
-      #    of three possible events.  Drive 0, drive 1
-      #    or read.  Supported character decode:
-      #      drive 0: '0'
-      #      drive 1: '1'
-      #      read: anything else
-      #
-      #   TODO: rewrite to suit new pin_cycle method
-      ##################################################
-      def process_pindata(pin, data)
-        if data == '0' || data == '1'
-          pin.out(data)
-          data
-        else
-          case pin.in
-          when '0'
-            @cycle_failure = true if data == 'H'
-            if data == 'X'
-              '.'
-            else
-              'L'
-            end
-          when '1'
-            @cycle_failure = true if data == 'L'
-            if data == 'X'
-              '`'
-            else
-              'H'
-            end
-          else
-            'W'
-          end
-        end
       end
 
       ##################################################
