@@ -312,7 +312,6 @@ module OrigenLink
         cycle_failure = false
 
         0.upto(repeat_count - 1) do |count|
-
           # process timing events
           @cycletiming[tset]['events'].each do |event|
             # process drive events
@@ -337,7 +336,6 @@ module OrigenLink
             message += @pinmap[p].response
             cycle_failure = true if @pinmap[p].cycle_failure
           end
-
         end # count
         if cycle_failure
           rtnmsg = 'F:' + message + '    Expected:' + args
