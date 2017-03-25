@@ -97,6 +97,8 @@ module OrigenLink
           pin_format(command[1])
         when 'pin_timing'
           pin_timing(command[1])
+        when 'pin_timingv2'
+          pin_timingv2(command[1])
         when 'version'
           "P:#{@version}"
         else
@@ -134,6 +136,50 @@ module OrigenLink
           'F:' + fail_message
         end
       end
+
+      ########################################################
+      # pin_timingv2 method
+      #   arguments: <args> from the message request
+      #     Should be '1,drive,5,pin,10,pin2,|compare,0,pin3'
+      #     First integer is timeset number
+      #
+      #   returns "P:" or error message
+      #
+      #   This method sets up a time set.  Any arbitrary
+      #   waveform can be generated
+      #
+      ########################################################
+      def pin_timingv2(args)
+        # get the tset number
+        argarr = args.split(',')
+        tset_key = argarr.delete_at(0).to_i
+        new_timeset(tset_key)
+        args = argarr.join(',')
+
+        # process and load the timeset
+        waves = args.split('|')
+        waves.each do |w|
+          argarr = w.split(',')
+          wave_type = argarr.delete_at(0)
+          event_data_key = wave_type + '_event_data'
+          event_pins_key = wave_type + '_event_pins'
+          w = argarr.join(',')
+          events = w.split(';')
+          events.each do |e|
+            argarr = e.split(',')
+            event_key = e.delete_at(0)
+            @cycletiming[tset_key]['events'] << event_key
+            @cycletiming[tset_key][event_data_key][event_key] = e.delete_at(0)
+            # now load the pins for this event
+            @cycletiming[tset_key][event_pins_key][event_key] = []
+            e.each do |pin|
+              @cycletiming[tset_key][event_pins_key][event_key] << @pinmap[pin]
+            end # of e.each
+          end # of events.each
+        end # of waves.each
+        @cycletiming[tset_key]['events'].uniq!
+        @cycletiming[tset_key]['events'].sort!
+      end # of def pin_timingv2
 
       ##################################################
       # new_timeset(tset)
