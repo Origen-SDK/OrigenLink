@@ -73,6 +73,16 @@ module OrigenLink
       @pattern_comments = {}
       @user_name = Etc.getlogin
       @initial_comm_sent = false
+      
+      # check the server version against the plug-in version
+      response = send_cmd('version','')
+      response.chomp!
+      server_version = response.split(':')[1]
+      app_version = Origen.app(:origen_link).version
+      Origen.log.info("Plug-in link version: #{app_version}, Server link version: #{server_version}")
+      unless app_version == server_version
+        Origen.log.warn('Server version and plug-in link versions do not match')
+      end
     end
 
     # push_comment
