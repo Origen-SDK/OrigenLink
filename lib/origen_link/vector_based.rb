@@ -76,9 +76,10 @@ module OrigenLink
 
       # check the server version against the plug-in version
       response = send_cmd('version', '')
+      response = 'Error' if response.nil?	# prevent run time error in regression tests
       response.chomp!
       server_version = response.split(':')[1]
-      server_version = '?.?.? -> 0.2.0 or earlier' if server_version =~ /Error/
+      server_version = '?.?.? - 0.2.0 or earlier' if response =~ /Error/
       app_version = Origen.app(:origen_link).version
       Origen.log.info("Plug-in link version: #{app_version}, Server link version: #{server_version}")
       unless app_version == server_version

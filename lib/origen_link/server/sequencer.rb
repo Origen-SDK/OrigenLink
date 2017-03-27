@@ -169,7 +169,7 @@ module OrigenLink
           events = w.split(';')
           events.each do |e|
             argarr = e.split(',')
-            event_key = argarr.delete_at(0)
+            event_key = argarr.delete_at(0).to_f
             @cycletiming[tset_key]['events'] << event_key
             @cycletiming[tset_key][event_data_key][event_key] = argarr.delete_at(0)
             # now load the pins for this event

@@ -33,35 +33,38 @@ describe OrigenLink::Server::Sequencer do
 
   specify "pinorder" do
     test_obj = OrigenLink::Server::Sequencer.new
+    test_obj.processmessage('pin_assign:tdi,23,tdo,23,tms,23').should == 'P:'
     test_obj.processmessage('pin_patternorder:tdi,tdo,tms').should == 'P:'
     test_obj.patternorder.should == %w(tdi tdo tms)
     test_obj.patternpinindex.should == { 'tdi' => 0, 'tdo' => 1, 'tms' => 2 }
-    test_obj.cycletiming[0]['timing'].should == [%w(tdi tdo tms), [], []]
+    test_obj.cycletiming[0]['events'].should == [0, 1, 2]
   end
 
   specify "pinformat_timing" do
     test_obj = OrigenLink::Server::Sequencer.new
+    test_obj.processmessage('pin_assign:tck,23,extal,23,tdi,23,tms,23,tdo,23')
     test_obj.processmessage('pin_format:1,tck,rl').should == 'P:'
-    test_obj.cycletiming[1]['rl'].should == ['tck']
-    test_obj.cycletiming[1]['rh'].should == nil
+    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
+    test_obj.cycletiming[1]['drive_event_data'][3].should == '0'
 
     test_obj.processmessage('pin_format:1,xtal,rh').should == 'P:'
-    test_obj.cycletiming[1]['rl'].should == nil
-    test_obj.cycletiming[1]['rh'].should == ['xtal']
+    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
+    test_obj.cycletiming[1]['drive_event_data'][3].should == '1'
 
     test_obj.processmessage('pin_format:2,tck,rl').should == 'P:'
-    test_obj.cycletiming[2]['rl'].should == ['tck']
-    test_obj.cycletiming[2]['rh'].should == nil
-    test_obj.cycletiming[1]['rl'].should == nil
-    test_obj.cycletiming[1]['rh'].should == ['xtal']
+    test_obj.cycletiming[2]['drive_event_data'][1].should == 'data'
+    test_obj.cycletiming[2]['drive_event_data'][3].should == '0'
+    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
+    test_obj.cycletiming[1]['drive_event_data'][3].should == '1'
 
     test_obj.processmessage('pin_timing:1,tdi,0,tms,1,tdo,2').should == 'P:'
-    test_obj.cycletiming[2]['rl'].should == ['tck']
-    test_obj.cycletiming[2]['rh'].should == nil
-    test_obj.cycletiming[1]['rl'].should == nil
-    test_obj.cycletiming[1]['rh'].should == ['xtal']
-    test_obj.cycletiming[1]['timing'].should == [['tdi'], ['tms'], ['tdo']]
-    test_obj.cycletiming[2]['timing'].should == [[], [], []]
+    test_obj.cycletiming[2]['drive_event_data'][1].should == 'data'
+    test_obj.cycletiming[2]['drive_event_data'][3].should == '0'
+    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
+    test_obj.cycletiming[1]['drive_event_data'][3].should == '1'
+    test_obj.cycletiming[1]['drive_event_data'][0].should == 'data'
+    test_obj.cycletiming[1]['drive_event_data'][2].should == 'data'
+    test_obj.cycletiming[1]['drive_event_data'][4].should == 'data'
   end
 
 end

@@ -109,7 +109,7 @@ module OrigenLink
         # skip any events wave that does not have any associated pins
         unless w.pins.size == 0
           w.evaluated_events.each do |e|
-            event_key = e[0]				# time stamp for the event
+            event_key = e[0].to_f		# time stamp for the event
             event_time << event_key
             event_setting[event_key] = e[1].to_s
 
