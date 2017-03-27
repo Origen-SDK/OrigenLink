@@ -73,11 +73,12 @@ module OrigenLink
       @pattern_comments = {}
       @user_name = Etc.getlogin
       @initial_comm_sent = false
-      
+
       # check the server version against the plug-in version
-      response = send_cmd('version','')
+      response = send_cmd('version', '')
       response.chomp!
       server_version = response.split(':')[1]
+      server_version = '?.?.? -> 0.2.0 or earlier' if server_version =~ /Error/
       app_version = Origen.app(:origen_link).version
       Origen.log.info("Plug-in link version: #{app_version}, Server link version: #{server_version}")
       unless app_version == server_version
@@ -252,9 +253,11 @@ module OrigenLink
 
       vector_cycles.each do |cycle|
         thiscyclefail = false
+        bad_pin_data = false
         if pfstatus == 'F'
           # check to see if this cycle failed
           0.upto(cycle.length - 1) do |index|
+            bad_pin_data = true if (cycle[index] == 'W')
             thiscyclefail = true if (cycle[index] == 'H') && (expected_msg[expected_msg.length - cycle.length + index] == 'L')
             thiscyclefail = true if (cycle[index] == 'L') && (expected_msg[expected_msg.length - cycle.length + index] == 'H')
           end
@@ -265,6 +268,10 @@ module OrigenLink
         else
           expected_msg_prnt = ''
           prepend = 'P:'
+        end
+        if bad_pin_data
+          expected_msg_prnt = ' ' + 'W indicates no operation, check timeset definition'
+          prepend = 'F:'
         end
 
         if output_obj.nil?

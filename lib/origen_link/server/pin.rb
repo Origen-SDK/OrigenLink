@@ -15,7 +15,6 @@ module OrigenLink
       attr_accessor :pattern_data
       attr_accessor :pattern_index
       attr_accessor :response
-      attr_accessor :cycle_failure
 
       # initialize:
       #  description - This method will execute system command
@@ -70,6 +69,16 @@ module OrigenLink
       #   returns whether the current pattern data is compare
       def data_is_compare?
         !@data_is_drive
+      end
+
+      # cycle_failure
+      #   returns a boolean indicating pass/fail status of this pin
+      def cycle_failure
+        if @response == 'W'
+          true		# force failure if no operation performed
+        else
+          @cycle_failure
+        end
       end
 
       # load_pattern_data
