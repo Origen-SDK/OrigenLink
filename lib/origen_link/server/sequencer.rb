@@ -155,6 +155,8 @@ module OrigenLink
         tset_key = argarr.delete_at(0).to_i
         new_timeset(tset_key)
         args = argarr.join(',')
+        
+        invalid_pins = []
 
         # process and load the timeset
         waves = args.split('|')
@@ -173,13 +175,23 @@ module OrigenLink
             # now load the pins for this event
             @cycletiming[tset_key][event_pins_key][event_key] = []
             argarr.each do |pin|
-              @cycletiming[tset_key][event_pins_key][event_key] << @pinmap[pin]
+              if @pinmap.key?(pin)
+                @cycletiming[tset_key][event_pins_key][event_key] << @pinmap[pin]
+              else
+                invalid_pins << pin
+              end
             end # of argarr.each
           end # of events.each
         end # of waves.each
         @cycletiming[tset_key]['events'].uniq!
         @cycletiming[tset_key]['events'].sort!
-        'P:'
+        
+        # return result
+        if invalid_pins.size > 0
+          'F:Invalid pins (not in pinmap): ' + invalid_pins.join(', ') 
+        else
+          'P:'
+        end
       end # of def pin_timingv2
 
       ##################################################
