@@ -11,6 +11,10 @@ module OrigenLink
       @pinmap = pinmap.gsub(/\s+/, '')
       response = send_cmd('pin_assign', @pinmap)
       setup_cmd_response_logger('pin_assign', response)
+      # store pins to the pinmap hash, this is used to remove non-link pins
+      # from the pattern in cases where the app includes too many pins
+      pinmap_arr = @pinmap.split(',')
+      0.step(pinmap_arr.size - 1, 2) { |p| @pinmap_hash[pinmap_arr[p]] = true }
     end
 
     # pinorder=
@@ -135,24 +139,30 @@ module OrigenLink
           w.evaluated_events.each do |e|
             event_key = e[0].to_f		# time stamp for the event
             event_time << event_key
-            event_setting[event_key] = e[1].to_s
+            event_setting[event_key] = [] unless event_setting.key?(event_key)
+            event_setting[event_key] << e[1].to_s
 
-            event_pins[event_key] = []
+            event_pins[event_key] = [] unless event_pins.key?(event_key)
+            event_pins[event_key] << []
             w.pins.each do |p|
-              event_pins[event_key] << p.id.to_s
+              event_pins[event_key].last << p.id.to_s if @pinmap_hash[p.id.to_s]
             end
           end
         end
       end
-
       # now sort the events into time order and build the tset argstr
+      event_time.uniq!
       event_time.sort!
       rtnstr = ''
       event_time.each do |event_key|
         rtnstr = rtnstr + ';' unless rtnstr.length == 0
-        rtnstr = rtnstr + event_key.to_s + ',' + event_setting[event_key] + ',' + event_pins[event_key].uniq.join(',')
+        event_setting[event_key].each_index do |i|
+          pins = event_pins[event_key][i].uniq.join(',')
+          rtnstr = rtnstr + ';' if i > 0
+          rtnstr = rtnstr + event_key.to_s + ',' + event_setting[event_key][i] + ',' + pins if pins.length > 0
+        end
       end
-      rtnstr
+      rtnstr.gsub(/;+/, ';')
     end
 
     # tset_warning(tset)

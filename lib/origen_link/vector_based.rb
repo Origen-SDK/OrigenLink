@@ -73,7 +73,9 @@ module OrigenLink
       @pattern_comments = {}
       @user_name = Etc.getlogin
       @initial_comm_sent = false
+      @initial_vector_pushed = false
       @pinorder = ''
+      @pinmap_hash = {}
 
       # check the server version against the plug-in version
       response = send_cmd('version', '')
@@ -106,9 +108,51 @@ module OrigenLink
       end
     end
 
+    # ordered_pins(options = {})
+    #   expand pin groups to their component pins after the pin ordering is completed
+    #   OrigenLink always operates on individual pins
+    def ordered_pins(options = {})
+      result = super
+      groups = {}
+      result.each_index { |i| groups[i] = result[i] if result[i].size > 1 }
+      groups.each_pair do |i, group|
+        result.delete_at(i)
+        dut.pins(group.id).map.each do |sub_pin|
+          result.insert(i, sub_pin)
+          i += 1
+        end
+      end
+      result
+    end
+    
+    # fix_ordered_pins(options)
+    #   This method is called the first time push_vector is called.
+    #   This method will remove any pin data that doesn't correspond
+    #   to a pin in the link pinmap and remove those pins from the
+    #   @ordered_pins_cache to prevent them from being rendered
+    #   on the next cycle.
+    #   This will prevent unwanted behavior.  The link server
+    #   expects only pin data for pins in the pinmap.
+    def fix_ordered_pins(options)
+      # TODO: create pinmap if app hasn't defined it
+      # remove non-mapped pins from the ordered pins cache - prevents them appearing in future push_vector calls
+      @ordered_pins_cache.delete_if { |p| !@pinmap_hash[p.name.to_s] }
+      # update pin values for the current  push_vector call
+      vals = []
+      @ordered_pins_cache.each { |p| vals << p.to_vector }
+      options[:pin_vals] = vals.join('')
+      options
+    end
+
     # push_vector
     #   This method intercepts vector data from Origen, removes white spaces and compresses repeats
     def push_vector(options)
+      unless @initial_vector_pushed
+        # remove pins not in the link pinmap
+        # TODO: auto pinmap creation will happen in this method as well
+        options = fix_ordered_pins(options)
+        @initial_vector_pushed = true
+      end
       set_pinorder if @pinorder == ''
       programmed_data = options[:pin_vals].gsub(/\s+/, '')
       unless options[:timeset]
@@ -310,9 +354,9 @@ module OrigenLink
       @total_recv_time = 0
 
       if @pinmap.nil?
-        Origen.log.error('pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
+        Origen.log.error('OrigenLink: pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
       else
-        Origen.log.debug('executing pattern with pinmap:' + @pinmap.to_s)
+        Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
       end
     end
 
