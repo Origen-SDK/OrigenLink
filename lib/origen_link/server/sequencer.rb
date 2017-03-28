@@ -171,12 +171,14 @@ module OrigenLink
             argarr = e.split(',')
             event_key = argarr.delete_at(0).to_f
             @cycletiming[tset_key]['events'] << event_key
-            @cycletiming[tset_key][event_data_key][event_key] = argarr.delete_at(0)
+            @cycletiming[tset_key][event_data_key][event_key] = [] unless @cycletiming[tset_key][event_data_key].key?(event_key)
+            @cycletiming[tset_key][event_data_key][event_key] << argarr.delete_at(0)
             # now load the pins for this event
-            @cycletiming[tset_key][event_pins_key][event_key] = []
+            @cycletiming[tset_key][event_pins_key][event_key] = [] unless @cycletiming[tset_key][event_pins_key].key?(event_key)
+            @cycletiming[tset_key][event_pins_key][event_key] << []
             argarr.each do |pin|
               if @pinmap.key?(pin)
-                @cycletiming[tset_key][event_pins_key][event_key] << @pinmap[pin]
+                @cycletiming[tset_key][event_pins_key][event_key].last << @pinmap[pin]
               else
                 invalid_pins << pin
               end
@@ -201,12 +203,13 @@ module OrigenLink
       #   timing format:
       #     ['events'] = [0, 5, 10, 35]
       #     ['drive_event_data'] = {
-      #           0: 'data'
-      #          10: 'data'
-      #          35: '0'
+      #           0: ['data']
+      #          10: ['data','0']
+      #          35: ['0']
       #         }
       #     ['drive_event_pins'] = {
-      #           0: [pin_obj1, pin_obj2]
+      #           0: [[pin_obj1, pin_obj2]]
+      #          10: [[pin1,pin2], [pin3]]
       #           etc.
       #         }
       ##################################################
@@ -233,20 +236,20 @@ module OrigenLink
         @cycletiming[tset_key]['events'] += [1, 3]
         @cycletiming[tset_key]['events'].sort!
         [1, 3].each do |event|
-          @cycletiming[tset_key]['drive_event_pins'][event] = []
+          @cycletiming[tset_key]['drive_event_pins'][event] = [[]]
         end
-        @cycletiming[tset_key]['compare_event_data'][1] = 'data'
+        @cycletiming[tset_key]['compare_event_data'][1] = ['data']
         0.step(argarr.length - 2, 2) do |index|
           drive_type = argarr[index + 1]
           pin_name = argarr[index]
-          @cycletiming[tset_key]['drive_event_data'][1] = 'data'
-          @cycletiming[tset_key]['drive_event_pins'][1] << @pinmap[pin_name]
-          @cycletiming[tset_key]['drive_event_pins'][3] << @pinmap[pin_name]
+          @cycletiming[tset_key]['drive_event_data'][1] = ['data']
+          @cycletiming[tset_key]['drive_event_pins'][1][0] << @pinmap[pin_name]
+          @cycletiming[tset_key]['drive_event_pins'][3][0] << @pinmap[pin_name]
           @cycletiming[tset_key]['compare_event_pins'][1] = [@pinmap[pin_name]]
           if drive_type == 'rl'
-            @cycletiming[tset_key]['drive_event_data'][3] = '0'
+            @cycletiming[tset_key]['drive_event_data'][3] = ['0']
           else
-            @cycletiming[tset_key]['drive_event_data'][3] = '1'
+            @cycletiming[tset_key]['drive_event_data'][3] = ['1']
           end
         end
         'P:'
@@ -277,8 +280,8 @@ module OrigenLink
         tset_key = argarr.delete_at(0).to_i
         new_timeset(tset_key) unless @cycletiming.key?(tset_key)
         [0, 2, 4].each do |event|
-          @cycletiming[tset_key]['drive_event_pins'][event] = []
-          @cycletiming[tset_key]['compare_event_pins'][event] = []
+          @cycletiming[tset_key]['drive_event_pins'][event] = [[]]
+          @cycletiming[tset_key]['compare_event_pins'][event] = [[]]
         end
 
         # process the information received
@@ -288,17 +291,17 @@ module OrigenLink
           event *= 2
           pin_name = argarr[index]
           @cycletiming[tset_key]['events'] << event
-          @cycletiming[tset_key]['drive_event_data'][event] = 'data'
-          @cycletiming[tset_key]['drive_event_pins'][event] << @pinmap[pin_name]
-          @cycletiming[tset_key]['compare_event_data'][event] = 'data'
-          @cycletiming[tset_key]['compare_event_pins'][event] << @pinmap[pin_name]
+          @cycletiming[tset_key]['drive_event_data'][event] = ['data']
+          @cycletiming[tset_key]['drive_event_pins'][event][0] << @pinmap[pin_name]
+          @cycletiming[tset_key]['compare_event_data'][event] = ['data']
+          @cycletiming[tset_key]['compare_event_pins'][event][0] << @pinmap[pin_name]
         end
 
         # remove events with no associated pins
         @cycletiming[tset_key]['events'].uniq!
         @cycletiming[tset_key]['events'].sort!
         [0, 2, 4].each do |event|
-          if @cycletiming[tset_key]['drive_event_pins'][event].size == 0
+          if @cycletiming[tset_key]['drive_event_pins'][event][0].size == 0
             @cycletiming[tset_key]['events'] -= [event]
             @cycletiming[tset_key]['drive_event_data'].delete(event)
             @cycletiming[tset_key]['drive_event_pins'].delete(event)
@@ -375,15 +378,19 @@ module OrigenLink
           @cycletiming[tset]['events'].each do |event|
             # process drive events
             if @cycletiming[tset]['drive_event_pins'].key?(event)
-              @cycletiming[tset]['drive_event_pins'][event].each do |p|
-                p.process_event(:drive, @cycletiming[tset]['drive_event_data'][event])
+              @cycletiming[tset]['drive_event_pins'][event].each_index do |i|
+                @cycletiming[tset]['drive_event_pins'][event][i].each do |p|
+                  p.process_event(:drive, @cycletiming[tset]['drive_event_data'][event][i])
+                end
               end
             end
 
             # process compare events
             if @cycletiming[tset]['compare_event_pins'].key?(event)
-              @cycletiming[tset]['compare_event_pins'][event].each do |p|
-                p.process_event(:compare, @cycletiming[tset]['compare_event_data'][event])
+              @cycletiming[tset]['compare_event_pins'][event].each_index do |i|
+                @cycletiming[tset]['compare_event_pins'][event][i].each do |p|
+                  p.process_event(:compare, @cycletiming[tset]['compare_event_data'][event][i])
+                end
               end
             end
           end # event
