@@ -9,7 +9,7 @@ Pattern.create(options={:name => "Timing_API_Test"})do
       w.drive :data, at: 5
     end
     t.wave do |w|
-      w.compare :data, at: 35
+      w.compare :data, at: 25
     end
   end
   $dut.current_timeset_period = 40
