@@ -31,7 +31,7 @@ module OrigenLink
           else
             tester.pinmap = 'tclk,119,tms,6,tdi,116,tdo,124' unless options[:missing_pinmap_test]
           end
-          tester.pinorder = 'tclk,tms,tdi,tdo'
+          # tester.pinorder = 'tclk,tms,tdi,tdo'
         end
       end
 
