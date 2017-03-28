@@ -110,7 +110,8 @@ module OrigenLink
 
     # ordered_pins(options = {})
     #   expand pin groups to their component pins after the pin ordering is completed
-    #   OrigenLink always operates on individual pins
+    #   OrigenLink always operates on individual pins.  This saves other methods
+    #   from each needing to handle pins and/or groups of pins.
     def ordered_pins(options = {})
       result = super
       groups = {}
@@ -124,7 +125,7 @@ module OrigenLink
       end
       result
     end
-    
+
     # fix_ordered_pins(options)
     #   This method is called the first time push_vector is called.
     #   This method will remove any pin data that doesn't correspond
@@ -136,7 +137,9 @@ module OrigenLink
     def fix_ordered_pins(options)
       # TODO: create pinmap if app hasn't defined it
       # remove non-mapped pins from the ordered pins cache - prevents them appearing in future push_vector calls
+      orig_size = @ordered_pins_cache.size
       @ordered_pins_cache.delete_if { |p| !@pinmap_hash[p.name.to_s] }
+      Origen.log.debug('OrigenLink removed non-mapped pins from the cached pin order array') unless orig_size == @ordered_pins_cache.size
       # update pin values for the current  push_vector call
       vals = []
       @ordered_pins_cache.each { |p| vals << p.to_vector }
