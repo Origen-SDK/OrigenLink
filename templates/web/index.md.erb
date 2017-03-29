@@ -4,22 +4,103 @@
 %# formatting like this, but in most cases that is not required.
 <h1><%= Origen.app.namespace %> <span style="font-size: 14px">(<%= Origen.app.version %>)</span></h1>
 
-### Purpose
+# Purpose
 
-This is a plug-in for Origen that enables live silicon debug directly from origen source.
+This is a plug-in for Origen that enables live silicon debug directly from origen source.  There are 2 parts to OrigenLink, the plug-in and the server.  Setup for each is documented separately.
 
-### How To Use
+# Plug-in
 
-Add the following line to your application's GEMFILE:
+Instructions for integrating and using the plug-in with your app.
 
-* gem 'origen_link'
+## How To Import
 
-Add the following line to your application:
+* Add the following line to your application's GEMFILE:
 
-* require 'origen_link'
+~~~ruby
+ gem 'origen_link'
+~~~
 
-### How To Setup the Application Environment
 
-Describe how a user would setup a new workspace for this application...
+* Add a link environment (./environment/link.rb).  See server setup section for more information:
+
+~~~ruby
+OrigenLink::VectorBased.new('<ServerComputerName>', 12777)
+~~~
+
+
+* Select link as your environment to run a pattern over the link connection when the origen generate command is run:
+
+~~~
+origen e environment/link.rb
+origen g pattern/my_pattern.rb
+~~~ 
+
+
+## How To Configure
+
+Before OrigenLink can be used the physical pin map and timing must be setup.  There are 2 supported ways of doing this.  The high-level setup method allows OrigenLink to determine how to configure the server side pin sequencer.  The high-level setup method is highly recommended.  For cases where the high-level setup is not functioning correctly, legacy apps, or if you just enjoy doing things the hard way, a legacy low-level api is available.  Both will be described here.
+
+### How To Configure - High-Level Method (Preferred)
+
+This is the recomended way to setup OrigenLink in your application.
+
+#### Physical Pin Map
+
+OrigenLink needs to tell the server application which physical IO pin on the UDOO device (see UDOO-Neo GPIO documentation) corresponds to which DUT pin in your app.  The number after 'gpio_' is what OrigenLink needs.  This IO number is passed to OrigenLink through pin meta data.
+
+~~~ruby
+add_pin :tclk, meta: {link_io: 8}
+add_pin :tdi, meta: {link_io: 146}
+~~~
+
+#### Timing
+
+OrigenLink emulates a tester sequencer through software.  The timing it implemtents will not be precise.  Setting the drive edge of tdi to 5ns and tclk to 20ns will not result in tclk being driven 15ns after tdi.  What will happen, though, is the sequencer will drive tdi first, followed by tclk.  It is recommended that you use the built in Origen API for setting timing.
+
+~~~ruby
+  # Configure timing for jtag communication with RL tclk
+  tester.set_timeset('api_tst', 40)
+  dut.timeset :api_tst do |t|
+    t.drive_wave :tclk do |w|
+      w.drive :data, at: 10
+      w.drive 0, at: 30
+    end
+    t.drive_wave :tdi, :tms, :tdo do |w|
+      w.drive :data, at: 5
+    end
+    t.compare_wave do |w|
+      w.compare :data, at: 25
+    end
+  end
+~~~
+
+#### Finished
+
+Start your OrigenLink server (see server setup section), connect your DUT to the server device and off you go.
+
+### How To Configure - Low-Level Legacy API (Skip Reading This Section)
+
+The prefered configuration method is above.  These methods for configuring the server application are supported for legacy applications.  This method is more prone to producing hard to debug errors during setup of a new app.
+
+#### Low-Level Physical Pin Map Setup
+
+Create a comma separated list of <pin_name>, <IO #> and pass it to the tester.  The .pinmap method will clear all server settings.  So, this should be done first.  The pin name string provided to the pinmap must exactly match the pin name string provided to the pin timing and pin order methods.  Any typo may result strange behavior (pin operation not occuring, timing error messages, and/or server crash).  No cause for alarm, just be sure to check for consistent names if you get those problems.
+
+~~~ruby
+  tester.pinmap = 'tclk,119,tms,6,tdi,116,tdo,124'
+~~~
+
+#### Low-Level Pattern Pin Order Setup
+
+Pins that don't have an assiciated physical IO will not have their pin data transmitted to the link server.  Create a comma separated list of the pins that are linked in the order that they appear in the pattern.  Using this command is not needed unless you used the low-level pin map setup command AND your dut.pins(:<name>) doesn't match the pin name that you setup using 'tester.pinmap ='.
+
+~~~ruby
+  pin_pattern_order :tclk, :tms, :tdi, :tdo	# This sets the order of the pins in the pattern
+
+  # This will cause issues because of a typo: 'tck' versus 'tclk' (tester.pinmap = 'tclk,119,)
+  tester.pinorder = 'tck,tms,tdi,tdo'		# This tells the server what order the pins are in the pattern (must match)
+~~~
+
+#### Low-Level Timing Setup
 
 % end
