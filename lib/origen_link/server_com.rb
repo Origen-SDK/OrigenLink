@@ -1,5 +1,7 @@
 module OrigenLink
   module ServerCom
+    # send a single command to the server
+    #
     # send_cmd(cmdstr, argstr)
     #   cmdstr is a valid command.  <category>_<command>
     #     Ex: 'pin_assign'
@@ -72,6 +74,7 @@ module OrigenLink
       response    # ensure the response is passed along
     end
 
+    # Send the stored batch of vectors to the server
     def send_batch(vector_batch)
       vector_batch_str = @user_name + "\n" + vector_batch.join("\n") + "\n\n"
       user_status = ''
@@ -124,7 +127,8 @@ module OrigenLink
       response
     end
 
-    # setup_cmd_response_logger
+    # Handle a server response (inform of Failures)
+    #
     #   There are several setup commands that initialize the debugger device with
     #   information about how to interact with the dut.  All of the setup commands
     #   return pass or fail.  This method exists so that the code doesn't have to

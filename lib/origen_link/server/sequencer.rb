@@ -50,11 +50,50 @@ module OrigenLink
       @gpio_dir || '/sys/class/gpio'
     end
 
+    ##################################################
+    # OrigenLink::Server::Sequencer Class
+    #
+    #    This class processes messages targeted for
+    #    pin sequencer interface (vector pattern
+    #    execution).
+    #
+    #    Supported messages:
+    #      pin_assign (create pin mapping)
+    #        ex: "pin_assign:tck,3,extal,23,tdo,5"
+    #
+    #      pin_patternorder (define vector pin order)
+    #        ex: "pin_patternorder:tdo,extal,tck"
+    #
+    #      pin_cycle (execute vector data)
+    #        ex: "pin_cycle:H11"
+    #
+    #      pin_clear (clear all setup information)
+    #        ex: "pin_clear:"
+    #
+    #      pin_format (setup a pin with return format)
+    #        first argument is the timeset
+    #        ex: "pin_format:1,tck,rl"
+    #
+    #      pin_timing (define when pin events happen)
+    #        timing is stored in a timeset hash
+    #        first argument is the timeset key
+    #        ex: "pin_timing:1,tdi,0,tdo,1,tms,0
+    #
+    #      version (check version of app server is
+    #        running)
+    #        ex: "version:"
+    #        response ex: "P:0.2.0.pre0"
+    ##################################################
     class Sequencer
+      # code version of the server (populated by start_link_server)
       attr_accessor :version
+      # hash holding the pinmap ('name' => pin object)
       attr_reader :pinmap
+      # array of pin names in pattern order
       attr_reader :patternorder
+      # hash holding programmed time set information 
       attr_reader :cycletiming
+      # hash holding pin pattern order ('name' => index)
       attr_reader :patternpinindex
 
       ##################################################

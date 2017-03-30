@@ -6,41 +6,48 @@ require 'origen_link/configuration_commands'
 require 'origen_link/callback_handlers'
 module OrigenLink
   # OrigenLink::VectorBased
-  #   This class is meant to be used for live silicon debug.  Vector data that Origen
+  #   This class describes the OrigenLink app plug-in.  Vector data that Origen
   #   generates is intercepted and sent to a debug device (typically will be a Udoo
   #   Neo - www.udoo.org).  The debug device can be any device that is able to serve
   #   a TCP socket, recieve and interpret the command set used by this class and send
   #   the expected responses.
   #
-  # Integration instructions
-  #   Set the pin map (must be done first) and pin order
-  #     if tester.link?
-  #        tester.pinmap = 'tclk,26,tms,19,tdi,16,tdo,23'
-  #        tester.pinorder = 'tclk,tms,tdi,tdo'
-  #     end
-  #
-  #   Set Origen to only generate vectors for pins in the pinmap (order should match)
-  #        pin_pattern_order :tclk, :tms, :tdi, :tdo, only: true if tester.link?
-  #
-  #   At the beginning of the Startup method add this line
-  #      tester.initialize_pattern if tester.link?
-  #
-  #   At the end of the Shutdown method add this line
-  #     tester.finalize_pattern if tester.link?
-  #
-  #   Create a link environment with the IP address and socket number of a link server
-  #     $tester = OrigenLink::VectorBased.new('192.168.0.2', 12777)
   class VectorBased
     include OrigenTesters::VectorBasedTester
     include ServerCom
     include CaptureSupport
     include ConfigurationCommands
 
-    # these attributes are exposed for testing purposes, a user would not need to read them
-    attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time
-    attr_reader :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed, :captured_data
-    attr_reader :vector_batch, :store_pins_batch, :comment_batch
-    attr_reader :user_name, :initial_comm_sent
+    # The number of cycles that fail
+    attr_reader :fail_count
+    # The number of vector cycles generated
+    attr_reader :vector_count
+    # The accumulated total time spent communicating with the server
+    attr_reader :total_comm_time
+    # The accumulated total time spent establishing the server connection
+    attr_reader :total_connect_time
+    # The accumulated total time spent transmitting to the server app
+    attr_reader :total_xmit_time
+    # The accumulated total time spent receiving from the server app
+    attr_reader :total_recv_time
+    # The accumulated total number of packets sent to the server
+    attr_reader :total_packets
+    # The accumulated number of times push_vector was called with the present tset and pin info
+    attr_reader :vector_repeatcount
+    # The look up of programmed tsets.  Names are converted to a unique number identifier
+    attr_reader :tsets_programmed
+    # Data captured using tester.capture
+    attr_reader :captured_data
+    # Array of vectors waiting to be sent to the sever
+    attr_reader :vector_batch
+    # Used with capture
+    attr_reader :store_pins_batch
+    # Array of comments received through push_comment
+    attr_reader :comment_batch
+    # The name of the user running OrigenLink
+    attr_reader :user_name
+    # Indicates that communication has been initiated with the server
+    attr_reader :initial_comm_sent
 
     def initialize(address, port, options = {})
       @address = address
@@ -188,9 +195,6 @@ module OrigenLink
     # flush_vector
     #   Just as the name suggests, this method "flushes" a vector.  This is necessary because
     #   of repeat compression (a vector isn't sent until different vector data is encountered)
-    #
-    #   Don't forget to flush when you're in debug mode.  Otherwise, the last vector of a
-    #   write command won't be sent to the server.
     def flush_vector(programmed_data = '', tset = '')
       # prevent server crash when vector_flush is used during debug
       unless @previous_vectordata == ''
@@ -339,8 +343,8 @@ module OrigenLink
     end
 
     # initialize_pattern
-    #   This method sets initializes variables at the start of a pattern.
-    #   it is called automatically when pattern generation starts.
+    #   This method initializes variables at the start of a pattern.
+    #   It is called automatically when pattern generation starts.
     def initialize_pattern
       @fail_count = 0
       @vector_count = 0
@@ -403,11 +407,9 @@ module OrigenLink
     end
 
     # to_s
-    #   returns 'Origen::VectorBased'
+    #   returns 'OrigenLink::VectorBased'
     #
-    #   This method at the moment is used for implementing code that runs only if the
-    #   environment is set to link vector based.  tester.link? will be used once the testers
-    #   plug in supports the method link?.
+    #   No longer a use for this.  Use tester.link?
     def to_s
       'OrigenLink::VectorBased'
     end
@@ -417,11 +419,10 @@ module OrigenLink
     #   true = pass
     #   false = fail
     #
-    # TODO: capture transaction vector data and response for use in debug
-    #
-    # if !tester.transaction {dut.reg blah blah}
-    #   puts 'transaction failed'
-    # end
+    # @example
+    #   if !tester.transaction {dut.reg blah blah}
+    #     puts 'transaction failed'
+    #   end
     def transaction
       if block_given?
         synchronize

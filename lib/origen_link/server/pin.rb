@@ -5,23 +5,31 @@
 
 module OrigenLink
   module Server
+    # The server pin class is used to perform IO using the UDOO pins
     class Pin
       @@pin_setup = {
         in:  'in',
         out: 'out'
       }
 
+      # True if this pin exists in /sys/class/gpio after export.  False otherwise.
       attr_reader :gpio_valid
+      # This pin's vector data for the pattern cycle being executed
       attr_accessor :pattern_data
+      # This pin's index in the vector data received from the plug-in app
       attr_accessor :pattern_index
+      # This pin's response for the executing vector
       attr_accessor :response
 
-      # initialize:
-      #  description - This method will execute system command
-      #                "sudo echo ionumber > /sys/class/gpio/export"
-      #                to create the IO file interface.  It will
-      #                set the direction, initial pin state and initialize
-      #                instance variables
+      # Export the pin io files through the system and take control of the IO
+      #
+      # This method will execute system command
+      # "echo #{ionumber} > /sys/class/gpio/export"
+      # to create the IO file interface.  It will
+      # set the direction, initial pin state and initialize
+      # instance variables
+      #
+      # Receives
       #  ionumber - required, value indicating the pin number (BCM IO number,
       #             not the header pin number)
       #  direction - optional, specifies the pin direction.  A pin is
@@ -139,6 +147,7 @@ module OrigenLink
         end # operation == :compare
       end
 
+      # Close the file IO objects associated with this pin
       def destroy
         if @gpio_valid
           @pin_dir_obj.close
@@ -148,10 +157,10 @@ module OrigenLink
         end
       end
 
-      #  out:
-      #    description - Sets the output state of the pin.  If the pin
-      #                  is setup as an input, the direction will first
-      #                  be changed to output.
+      # Sets the output state of the pin.
+      #  
+      # If the pin is setup as an input, 
+      # the direction will first be changed to output.
       #
       def out(value)
         if @gpio_valid
@@ -163,10 +172,10 @@ module OrigenLink
         end
       end
 
-      #  in:
-      #    description - Reads and returns state of the pin.  If the pin
-      #                  is setup as an output, the direction will first
-      #                  be changed to input.
+      # Reads and returns state of the pin.  
+      #
+      # If the pin is setup as an output, the direction will first
+      # be changed to input.
       #
       def in
         if @gpio_valid
@@ -183,11 +192,10 @@ module OrigenLink
         end
       end
 
-      #  update_direction:
-      #    description - Sets the pin direction
+      # Sets the pin direction
       #
-      #  direction - specifies the pin direction.  A pin is
-      #              initialized as an input if a direction isn't specified.
+      # Receives:
+      #  direction - specifies the pin direction.  Input is default.
       #
       #  Valid direction values:
       #    :in	-	input
@@ -201,6 +209,7 @@ module OrigenLink
         end
       end
 
+      # Returns 'OrigenLinPin' + io number
       def to_s
         'OrigenLinkPin' + @ionumber.to_s
       end

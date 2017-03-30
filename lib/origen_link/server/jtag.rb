@@ -2,11 +2,17 @@ require 'origen_link/server/pin'
 
 module OrigenLink
   module Server
+    # The Jtag class is not part of the OrigenLink plug-in/server ecosystem.
+    # It implements standard jtag protocol.  It can be used to implement a
+    # Jtag protocol server (not included in this repository presently).
     class Jtag
+      # The value read from TDO during the shift
       attr_reader :tdoval
+      # Enable extra output
       attr_accessor :verbose_enable
       attr_accessor :anytdofail
 
+      # Create the jtag pin objects
       def initialize(tdiio = 16, tdoio = 23, tmsio = 19, tckio = 26, tck_period = 0.000001)
         @tdipin = Pin.new(tdiio, :out)
         @tdopin = Pin.new(tdoio, :in)
@@ -19,10 +25,12 @@ module OrigenLink
         @anytdofail = false
       end
 
+      # not needed, no need for wait states between operations
       def tck_period=(value)
         @tck_half_period = value / 2
       end
 
+      # close out file IO objects for the pins
       def destroy
         @tdipin.destroy
         @tdopin.destroy
@@ -34,6 +42,7 @@ module OrigenLink
         @tckpin = nil
       end
 
+      # perform 1 jtag cycle
       def do_cycle(tdival, tmsval, capturetdo = false)
         @tdipin.out(tdival)
         @tmspin.out(tmsval)
@@ -47,11 +56,13 @@ module OrigenLink
         @tckpin.out(0)
       end
 
+      # advance state machine to test logic reset, then return to run/test idle
       def do_tlr
         8.times { do_cycle(0, 1) }
         do_cycle(0, 0)
       end
 
+      # shift a value in on tdi, optionall capture tdo
       def do_shift(numbits, value, capturetdo = false, suppresscomments = false, tdocompare = '')
         @tdoval = 0
         @tdostr = ''
@@ -98,6 +109,7 @@ module OrigenLink
         end
       end
 
+      # perform an ir-update
       def do_ir(numbits, value, options = {})
         defaults = {
           capturetdo:	      false,
@@ -130,6 +142,7 @@ module OrigenLink
         do_cycle(0, 0)
       end
 
+      # perform a dr update
       def do_dr(numbits, value, options = {})
         defaults = {
           capturetdo:	      true,
@@ -160,6 +173,7 @@ module OrigenLink
         do_cycle(0, 0)
       end
 
+      # traverse the pause dr state
       def pause_dr
         do_cycle(0, 1)
         do_cycle(0, 0)
@@ -171,6 +185,7 @@ module OrigenLink
         do_cycle(0, 0)
       end
 
+      # traverse the pause ir state
       def pause_ir
         do_cycle(0, 1)
         pause_dr
