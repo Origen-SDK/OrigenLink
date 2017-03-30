@@ -6,7 +6,7 @@
 
 # Purpose
 
-This is a plug-in for Origen that enables live silicon debug directly from origen source.  There are 2 parts to OrigenLink, the plug-in and the server.  Setup for each is documented separately.
+This is a plug-in for Origen that enables live silicon debug directly from origen source.  There are 2 parts to OrigenLink, the plug-in and the server.  Setup for each is documented separately.  The OrigenLink server is capable of being shared by multiple people working on the same project.  It will lock out other users during your debug or pattern execution session.
 
 # Plug-in
 
@@ -24,7 +24,7 @@ Instructions for integrating and using the plug-in with your app.
 * Add a link environment (./environment/link.rb).  See server setup section for more information:
 
 ~~~ruby
-OrigenLink::VectorBased.new('<ServerComputerName>', 12777)
+OrigenLink::VectorBased.new('<ServerComputerName -- or IP_Address>', 12777)
 ~~~
 
 
@@ -170,12 +170,52 @@ There are a few methods for observing the actual state of the DUT.
   (debugger prompt): dut.reg(:MyReg).sync! 
 ~~~
 
+#### When A Shared Server Session Isn't Properly Ended
+
+The server is able to handle multiple users.  Once a user connects to the server, it will only allow access from that same IP address and user name until the session has ended.  The session end command is transmitted when pattern generation is completed.  If a user fails to properly end their session (happens when you exit debug mode by typing 'q' instead of 'c'), the server application will continue to lock out access until the time out has expired (20 minutes).  Before terminating a running session, check with the user who started the session to make sure they aren't in the middle of debug (the user id and IP address will be displayed when you try to connect).  If the previous session needs to be manually terminated, this is how you do it (this should be a rare exception to the rule - it's bad manners to forcefully kill another user's session):
+
+~~~ruby
+  # run this code to forcefully terminate a session
+~~~
+
 # Server
+
+This section describes how to setup a new IOT device to serve the OrigenLink pin sequencer.
 
 ## Setting Up a New UDOO device
 
+Here are the steps to take to setup a new UDOO-Neo to run the OrigenLink server application.  These instructions are not intended to be exhaustive, but should be good enough to get you up and running.
+
+* Step 1 - 
+* Step 2 -
+* Step 3 -
+
 ## Starting the Server
 
+If you installed Ruby 2.x and Origen, run this command to start the server:
+
+~~~
+<command_prompt>$ start_link_server
+~~~
+
+If you chose to clone the OrigenLink project from github, navigate to the OrigenLink directory and type this command:
+
+~~~
+<command_prompt>$ bin/start_link_server
+~~~
+
+The server is now running
+
 ## Physical Interconnect
+
+Keep the following things in mind when connecting the IO's of your UDOO Neo to a DUT
+
+* Ground is important.  As a rule of thumb, connect at least 2 ground wires between the UDOO and your DUT
+
+* Pay attention to pin levels.  The UDOO IO's are 3.3v.  If your device is not also 3.3v, the most reliable way to connect the IO's is by using a bi-directional (auto-direction sensing) level shifter.  This one works well and is easy to find: ---------------
+
+# How It Works
+
+This section will explain the in's and out's of how the plug-in and server applications work and how they communicate.
 
 % end
