@@ -72,6 +72,7 @@ module OrigenLink
       @pattern_comments = {}
       @user_name = Etc.getlogin
       @initial_comm_sent = false
+      @pinorder = ''
     end
 
     # push_comment
@@ -95,11 +96,12 @@ module OrigenLink
     # push_vector
     #   This method intercepts vector data from Origen, removes white spaces and compresses repeats
     def push_vector(options)
+      set_pinorder if @pinorder == ''
       programmed_data = options[:pin_vals].gsub(/\s+/, '')
       unless options[:timeset]
         puts 'No timeset defined!'
         puts 'Add one to your top level startup method or target like this:'
-        puts '$tester.set_timeset("nvmbist", 40)   # Where 40 is the period in ns'
+        puts 'tester.set_timeset("nvmbist", 40)   # Where 40 is the period in ns'
         exit 1
       end
       tset = options[:timeset].name
