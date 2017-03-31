@@ -158,8 +158,8 @@ module OrigenLink
       end
 
       # Sets the output state of the pin.
-      #  
-      # If the pin is setup as an input, 
+      #
+      # If the pin is setup as an input,
       # the direction will first be changed to output.
       #
       def out(value)
@@ -172,7 +172,7 @@ module OrigenLink
         end
       end
 
-      # Reads and returns state of the pin.  
+      # Reads and returns state of the pin.
       #
       # If the pin is setup as an output, the direction will first
       # be changed to input.

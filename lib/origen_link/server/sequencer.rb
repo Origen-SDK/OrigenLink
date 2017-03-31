@@ -91,7 +91,7 @@ module OrigenLink
       attr_reader :pinmap
       # array of pin names in pattern order
       attr_reader :patternorder
-      # hash holding programmed time set information 
+      # hash holding programmed time set information
       attr_reader :cycletiming
       # hash holding pin pattern order ('name' => index)
       attr_reader :patternpinindex

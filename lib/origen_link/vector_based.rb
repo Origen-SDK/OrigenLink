@@ -131,7 +131,7 @@ module OrigenLink
           i += 1
         end
       end
-      
+
       if @pinmap.nil?
         # create the pinmap if pin metadata was provided
         pinarr = []
@@ -143,7 +143,7 @@ module OrigenLink
         end
         self.pinmap = pinarr.join(',') unless pinarr.size == 0
       end
-      
+
       result
     end
 
@@ -179,10 +179,10 @@ module OrigenLink
         else
           Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
         end
-        
+
         # remove pins not in the link pinmap
         options = fix_ordered_pins(options)
-        
+
         # now send any configuration commands that were saved prior to pinmap setup (clears all server configs)
         @batched_setup_cmds.each do |cmd|
           response = send_cmd(cmd[0], cmd[1])
