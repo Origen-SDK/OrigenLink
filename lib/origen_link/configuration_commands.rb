@@ -28,9 +28,16 @@ module OrigenLink
     #   example:
     #     tester.pinorder = 'tclk,tms,tdi,tdo'
     def pinorder=(pinorder)
-      @pinorder = pinorder.gsub(/\s+/, '')
-      response = send_cmd('pin_patternorder', @pinorder)
-      setup_cmd_response_logger('pin_patternorder', response)
+      cmd = []
+      cmd << 'pin_patternorder'
+      cmd << pinorder.gsub(/\s+/, '')
+      @pinorder = cmd[1]
+      if @pinmap.nil?
+        @batched_setup_cmds << cmd
+      else
+        response = send_cmd(cmd[0], @pinorder)
+        setup_cmd_response_logger(cmd[0], response)
+      end
     end
 
     # set_pinorder
@@ -64,9 +71,16 @@ module OrigenLink
     #   example:
     #     tester.pinformat = 'func_25mhz,tclk,rl'
     def pinformat=(pinformat)
-      @pinformat = replace_tset_name_w_number(pinformat.gsub(/\s+/, ''))
-      response = send_cmd('pin_format', @pinformat)
-      setup_cmd_response_logger('pin_format', response)
+      cmd = []
+      cmd << 'pin_format'
+      cmd << replace_tset_name_w_number(pinformat.gsub(/\s+/, ''))
+      @pinformat = cmd[1]
+      if @pinmap.nil?
+        @batched_setup_cmds << cmd
+      else
+        response = send_cmd(cmd[0], @pinformat)
+        setup_cmd_response_logger(cmd[0], response)
+      end
     end
 
     # pintiming=
@@ -79,9 +93,16 @@ module OrigenLink
     #   example:
     #     tester.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'
     def pintiming=(pintiming)
-      @pintiming = replace_tset_name_w_number(pintiming.gsub(/\s+/, ''))
-      response = send_cmd('pin_timing', @pintiming)
-      setup_cmd_response_logger('pin_timing', response)
+      cmd = []
+      cmd << 'pin_timing'
+      cmd << replace_tset_name_w_number(pintiming.gsub(/\s+/, ''))
+      @pintiming = cmd[1]
+      if @pinmap.nil?
+        @batched_setup_cmds << cmd
+      else
+        response = send_cmd(cmd[0], @pintiming)
+        setup_cmd_response_logger(cmd[0], response)
+      end
     end
 
     # process_timeset(tset)
@@ -118,8 +139,15 @@ module OrigenLink
         end
 
         # send the timeset information to the server
-        response = send_cmd('pin_timingv2', argstr)
-        setup_cmd_response_logger('pin_timingv2', response)
+        cmd = []
+        cmd << 'pin_timingv2'
+        cmd << argstr
+        if @pinmap.nil?
+          @batched_setup_cmds << cmd
+        else
+          response = send_cmd('pin_timingv2', argstr)
+          setup_cmd_response_logger('pin_timingv2', response)
+        end
 
         # return the tset number from the tset hash
         "tset#{@tsets_programmed[tset]},"

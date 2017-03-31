@@ -83,6 +83,7 @@ module OrigenLink
       @initial_vector_pushed = false
       @pinorder = ''
       @pinmap_hash = {}
+      @batched_setup_cmds = []
 
       # check the server version against the plug-in version
       response = send_cmd('version', '')
@@ -130,11 +131,27 @@ module OrigenLink
           i += 1
         end
       end
+      
+      if @pinmap.nil?
+        # create the pinmap if pin metadata was provided
+        pinarr = []
+        result.each do |pin|
+          if pin.meta.key?(:link_io)
+            pinarr << pin.name.to_s
+            pinarr << pin.meta[:link_io].to_s
+          end
+        end
+        self.pinmap = pinarr.join(',') unless pinarr.size == 0
+      end
+      
       result
     end
 
     # fix_ordered_pins(options)
     #   This method is called the first time push_vector is called.
+    #
+    #   This method will create the pinmap from pin meta data if needed.
+    #
     #   This method will remove any pin data that doesn't correspond
     #   to a pin in the link pinmap and remove those pins from the
     #   @ordered_pins_cache to prevent them from being rendered
@@ -142,7 +159,6 @@ module OrigenLink
     #   This will prevent unwanted behavior.  The link server
     #   expects only pin data for pins in the pinmap.
     def fix_ordered_pins(options)
-      # TODO: create pinmap if app hasn't defined it
       # remove non-mapped pins from the ordered pins cache - prevents them appearing in future push_vector calls
       orig_size = @ordered_pins_cache.size
       @ordered_pins_cache.delete_if { |p| !@pinmap_hash[p.name.to_s] }
@@ -158,9 +174,21 @@ module OrigenLink
     #   This method intercepts vector data from Origen, removes white spaces and compresses repeats
     def push_vector(options)
       unless @initial_vector_pushed
+        if @pinmap.nil?
+          Origen.log.error('OrigenLink: pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
+        else
+          Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
+        end
+        
         # remove pins not in the link pinmap
-        # TODO: auto pinmap creation will happen in this method as well
         options = fix_ordered_pins(options)
+        
+        # now send any configuration commands that were saved prior to pinmap setup (clears all server configs)
+        @batched_setup_cmds.each do |cmd|
+          response = send_cmd(cmd[0], cmd[1])
+          setup_cmd_response_logger(cmd[0], response)
+        end
+
         @initial_vector_pushed = true
       end
       set_pinorder if @pinorder == ''
@@ -360,11 +388,12 @@ module OrigenLink
       @total_xmit_time = 0
       @total_recv_time = 0
 
-      if @pinmap.nil?
-        Origen.log.error('OrigenLink: pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
-      else
-        Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
-      end
+      # moved to push_vector to allow auto-pinmap
+      # if @pinmap.nil?
+      #   Origen.log.error('OrigenLink: pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
+      # else
+      #   Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
+      # end
     end
 
     # finalize_pattern
