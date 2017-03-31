@@ -106,7 +106,25 @@ Pins that don't have an assiciated physical IO will not have their pin data tran
 
 #### Low-Level Timing Setup
 
-Info on low level timing api will be here shortly
+~~~
+    # pinformat=
+    #   This method is used to setup the pin clock format on the debugger device.
+    #   The supported formats are rl and rh
+    #
+    #   example:
+    #     tester.pinformat = 'func_25mhz,tclk,rl'
+
+    # pintiming=
+    #   This method is used to setup the pin timing on the debugger device.
+    #   Timing is relative to the rise and fall of a clock
+    #
+    #   timing value:         0   1   2
+    #   clock waveform:      ___/***\___
+    #
+    #   example:
+    #     tester.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'
+
+~~~
 
 ### Debugging Your App
 
@@ -284,6 +302,6 @@ Keep the following things in mind when connecting the IO's of your UDOO Neo to a
 
 # How It Works
 
-This section will explain the in's and out's of how the plug-in and server applications work and how they communicate.
+This section will explain the in's and out's of how the plug-in and server applications work and how they communicate.  Look for an update soon.
 
 % end
