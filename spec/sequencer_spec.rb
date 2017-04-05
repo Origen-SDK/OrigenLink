@@ -44,27 +44,39 @@ describe OrigenLink::Server::Sequencer do
     test_obj = OrigenLink::Server::Sequencer.new
     test_obj.processmessage('pin_assign:tck,23,extal,23,tdi,23,tms,23,tdo,23')
     test_obj.processmessage('pin_format:1,tck,rl').should == 'P:'
-    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
-    test_obj.cycletiming[1]['drive_event_data'][3].should == '0'
+    test_obj.cycletiming[1]['drive_event_data'][1].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][3].should == ['0']
 
     test_obj.processmessage('pin_format:1,xtal,rh').should == 'P:'
-    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
-    test_obj.cycletiming[1]['drive_event_data'][3].should == '1'
+    test_obj.cycletiming[1]['drive_event_data'][1].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][3].should == ['1']
 
     test_obj.processmessage('pin_format:2,tck,rl').should == 'P:'
-    test_obj.cycletiming[2]['drive_event_data'][1].should == 'data'
-    test_obj.cycletiming[2]['drive_event_data'][3].should == '0'
-    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
-    test_obj.cycletiming[1]['drive_event_data'][3].should == '1'
+    test_obj.cycletiming[2]['drive_event_data'][1].should == ['data']
+    test_obj.cycletiming[2]['drive_event_data'][3].should == ['0']
+    test_obj.cycletiming[1]['drive_event_data'][1].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][3].should == ['1']
 
     test_obj.processmessage('pin_timing:1,tdi,0,tms,1,tdo,2').should == 'P:'
-    test_obj.cycletiming[2]['drive_event_data'][1].should == 'data'
-    test_obj.cycletiming[2]['drive_event_data'][3].should == '0'
-    test_obj.cycletiming[1]['drive_event_data'][1].should == 'data'
-    test_obj.cycletiming[1]['drive_event_data'][3].should == '1'
-    test_obj.cycletiming[1]['drive_event_data'][0].should == 'data'
-    test_obj.cycletiming[1]['drive_event_data'][2].should == 'data'
-    test_obj.cycletiming[1]['drive_event_data'][4].should == 'data'
+    test_obj.cycletiming[2]['drive_event_data'][1].should == ['data']
+    test_obj.cycletiming[2]['drive_event_data'][3].should == ['0']
+    test_obj.cycletiming[1]['drive_event_data'][1].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][3].should == ['1']
+    test_obj.cycletiming[1]['drive_event_data'][0].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][2].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][4].should == ['data']
   end
+
+  specify "pin_timingv2" do
+    test_obj = OrigenLink::Server::Sequencer.new
+    test_obj.processmessage('pin_assign:tck,23,extal,23,tdi,23,tms,23,tdo,23')
+    test_obj.processmessage('pin_timingv2:1,drive,5.0,data,tdo,tms,tdi;20.0,data,tck|compare,35.0,data,tck,tdo,tms,tdi').should == 'P:'
+    test_obj.cycletiming[1]['drive_event_data'][5.0].should == ['data']
+    test_obj.cycletiming[1]['drive_event_data'][20.0].should == ['data']
+    test_obj.cycletiming[1]['compare_event_data'][35.0].should == ['data']
+  
+    test_obj.processmessage('pin_timingv2:2,drive,0.0,data,tdo,tms,tdi;10.0,data,tck;30.0,0,tck|compare,40.0,data,tck,tdo,tms,tdi').should == 'P:'
+    test_obj.cycletiming[2]['drive_event_data'][30.0].should == ['0']
+end
 
 end
