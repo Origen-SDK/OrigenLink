@@ -5,20 +5,31 @@
 
 module OrigenLink
   module Server
+    # The server pin class is used to perform IO using the UDOO pins
     class Pin
       @@pin_setup = {
         in:  'in',
         out: 'out'
       }
 
+      # True if this pin exists in /sys/class/gpio after export.  False otherwise.
       attr_reader :gpio_valid
+      # This pin's vector data for the pattern cycle being executed
+      attr_accessor :pattern_data
+      # This pin's index in the vector data received from the plug-in app
+      attr_accessor :pattern_index
+      # This pin's response for the executing vector
+      attr_accessor :response
 
-      # initialize:
-      #  description - This method will execute system command
-      #                "sudo echo ionumber > /sys/class/gpio/export"
-      #                to create the IO file interface.  It will
-      #                set the direction, initial pin state and initialize
-      #                instance variables
+      # Export the pin io files through the system and take control of the IO
+      #
+      # This method will execute system command
+      # "echo #{ionumber} > /sys/class/gpio/export"
+      # to create the IO file interface.  It will
+      # set the direction, initial pin state and initialize
+      # instance variables
+      #
+      # Receives
       #  ionumber - required, value indicating the pin number (BCM IO number,
       #             not the header pin number)
       #  direction - optional, specifies the pin direction.  A pin is
@@ -49,8 +60,94 @@ module OrigenLink
           end
           @pin_val_obj = File.open(@pin_val_name, 'r+') if @gpio_valid
         end
+        @pattern_data = ''
+        @pattern_index = -1
+        @response = 'W'
+        @cycle_failure = false
+        @data_is_drive = false
       end
 
+      # data_is_drive?
+      #   returns whether the current pattern data is drive
+      def data_is_drive?
+        @data_is_drive
+      end
+
+      # data_is_compare?
+      #   returns whether the current pattern data is compare
+      def data_is_compare?
+        !@data_is_drive
+      end
+
+      # cycle_failure
+      #   returns a boolean indicating pass/fail status of this pin
+      def cycle_failure
+        if @response == 'W'
+          true		# force failure if no operation performed
+        else
+          @cycle_failure
+        end
+      end
+
+      # load_pattern_data
+      #   Grab this pin's data character from the pattern data
+      def load_pattern_data(cycle)
+        if @pattern_index > -1
+          @pattern_data = cycle[@pattern_index]
+          @response = 'W'
+          @cycle_failure = false
+          if @pattern_data == '1' || @pattern_data == '0'
+            @data_is_drive = true
+          else
+            @data_is_drive = false
+          end
+        else
+          @gpio_valid = false
+        end
+      end
+
+      # process_event(event)
+      #   perform the requested pin operation and update the response (if required)
+      def process_event(operation, requested_action)
+        if operation == :drive
+          if data_is_drive?
+            if requested_action == 'data'
+              out(@pattern_data)
+              @response = @pattern_data
+            else
+              out(requested_action)
+            end # requested_action == 'data'
+          end # data_is_drive?
+        end # operation == :drive
+        if operation == :compare
+          if data_is_compare?
+            if requested_action == 'data'
+              case self.in
+                when '0'
+                  @cycle_failure = true if @pattern_data == 'H'
+                  if @pattern_data == 'X'
+                    @response = '.'
+                  else
+                    @response = 'L'
+                  end
+                # end of when '0'
+                when '1'
+                  @cycle_failure = true if @pattern_data == 'L'
+                  if @pattern_data == 'X'
+                    @response = '`'
+                  else
+                    @response = 'H'
+                  end
+                # end of when '1'
+                else
+                  @response = 'W'
+              end # case
+            end # requested_action == 'data'
+          end # data_is_compare?
+        end # operation == :compare
+      end
+
+      # Close the file IO objects associated with this pin
       def destroy
         if @gpio_valid
           @pin_dir_obj.close
@@ -60,10 +157,10 @@ module OrigenLink
         end
       end
 
-      #  out:
-      #    description - Sets the output state of the pin.  If the pin
-      #                  is setup as an input, the direction will first
-      #                  be changed to output.
+      # Sets the output state of the pin.
+      #
+      # If the pin is setup as an input,
+      # the direction will first be changed to output.
       #
       def out(value)
         if @gpio_valid
@@ -75,10 +172,10 @@ module OrigenLink
         end
       end
 
-      #  in:
-      #    description - Reads and returns state of the pin.  If the pin
-      #                  is setup as an output, the direction will first
-      #                  be changed to input.
+      # Reads and returns state of the pin.
+      #
+      # If the pin is setup as an output, the direction will first
+      # be changed to input.
       #
       def in
         if @gpio_valid
@@ -95,11 +192,10 @@ module OrigenLink
         end
       end
 
-      #  update_direction:
-      #    description - Sets the pin direction
+      # Sets the pin direction
       #
-      #  direction - specifies the pin direction.  A pin is
-      #              initialized as an input if a direction isn't specified.
+      # Receives:
+      #  direction - specifies the pin direction.  Input is default.
       #
       #  Valid direction values:
       #    :in	-	input
@@ -113,6 +209,7 @@ module OrigenLink
         end
       end
 
+      # Returns 'OrigenLinPin' + io number
       def to_s
         'OrigenLinkPin' + @ionumber.to_s
       end

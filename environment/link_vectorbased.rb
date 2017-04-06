@@ -1,1 +1,1 @@
-$tester = OrigenLink::VectorBased.new('192.168.7.2', 12777)
+$tester = OrigenLink::VectorBased.new('udooneo-pauld', 12777)

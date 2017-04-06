@@ -2,6 +2,18 @@ require 'spec_helper'
 
 describe OrigenLink::VectorBased do
 
+  class VecTestDUT
+    include Origen::TopLevel
+
+    def initialize
+      add_pin :tck
+      add_pin :tdo
+      add_pin :tms
+      add_pin :tdi
+    end
+
+  end
+
   class DummyTset
     attr_accessor :name
 
@@ -38,29 +50,70 @@ describe OrigenLink::VectorBased do
 
 
   specify "pin values are being accumulated and not sent" do
-    test_obj.message = ''
-    test_obj.push_vector(timeset: timeset_sim_obj, pin_vals: '1100')
-    test_obj.message.should == ''
-    test_obj.vector_repeatcount.should == 1
+    Origen.target.temporary = -> { VecTestDUT.new; OrigenLink::Test::VectorBased.new('localhost', 12_777) }
+    Origen.target.load!
+    tester.message = ''
+    tester.set_timeset('tp0', 40)
+    tester.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
+    tester.message = ''
+    dut.pins(:tck).drive(1)
+    dut.pins(:tdo).drive(1)
+    dut.pins(:tms).drive(0)
+    dut.pins(:tdi).drive!(0)
+    tester.message.should_not =~ /pin_cycle/
+    tester.vector_repeatcount.should == 1
   end
 
   specify "that different vector data causes previous to be sent" do
-    test_obj.microcodestr = ''
-    test_obj.test_response = 'P:1100'
-    test_obj.push_vector(timeset: timeset_sim_obj, pin_vals: '1000')
-    test_obj.vector_batch.should == ['pin_cycle:1100']
+    Origen.target.temporary = -> { VecTestDUT.new; OrigenLink::Test::VectorBased.new('localhost', 12_777) }
+    Origen.target.load!
+    tester.message = ''
+    tester.set_timeset('tp0', 40)
+    tester.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
+    tester.message = ''
+    dut.pins(:tck).drive(1)
+    dut.pins(:tdo).drive(1)
+    dut.pins(:tms).drive(0)
+    dut.pins(:tdi).drive!(0)
+    tester.microcodestr = ''
+    tester.test_response = 'P:1100'
+    dut.pins(:tdo).drive!(0)
+    tester.vector_batch.should == ['pin_cycle:1100']
   end
 
   specify "that repeat count accumulates" do
-    test_obj.microcodestr = ''
-    test_obj.push_vector(timeset: timeset_sim_obj, pin_vals: '1000')
-    test_obj.vector_repeatcount.should == 2
+    Origen.target.temporary = -> { VecTestDUT.new; OrigenLink::Test::VectorBased.new('localhost', 12_777) }
+    Origen.target.load!
+    tester.message = ''
+    tester.set_timeset('tp0', 40)
+    tester.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
+    tester.message = ''
+    dut.pins(:tck).drive(1)
+    dut.pins(:tdo).drive(1)
+    dut.pins(:tms).drive(0)
+    dut.pins(:tdi).drive!(0)
+    tester.microcodestr = ''
+    tester.vector_repeatcount.should == 1
+    tester.cycle
+    tester.vector_repeatcount.should == 2
   end
 
   specify "check that repeat count is correctly sent" do
-    test_obj.test_response = 'P:repeat2,1000'
-    test_obj.flush_vector
-    test_obj.vector_batch.should == ['pin_cycle:1100','pin_cycle:repeat2,1000']
+    Origen.target.temporary = -> { VecTestDUT.new; OrigenLink::Test::VectorBased.new('localhost', 12_777) }
+    Origen.target.load!
+    tester.message = ''
+    tester.set_timeset('tp0', 40)
+    tester.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
+    tester.message = ''
+    dut.pins(:tck).drive(1)
+    dut.pins(:tdo).drive(1)
+    dut.pins(:tms).drive(0)
+    dut.pins(:tdi).drive!(0)
+    tester.microcodestr = ''
+    tester.cycle
+    tester.test_response = 'P:repeat2,1100'
+    tester.flush_vector
+    tester.vector_batch.should == ['pin_cycle:repeat2,1100']
   end
 
   specify "pin format setup" do
@@ -75,11 +128,22 @@ describe OrigenLink::VectorBased do
   end
 
   specify "pin_cycle works correctly with tsets programmed" do
-    test_obj.test_response = 'P:tset0,1000'
-    timeset_sim_obj.name = 'func_25mhz'
-    test_obj.push_vector(timeset: timeset_sim_obj, pin_vals: '1000')
-    test_obj.flush_vector
-    test_obj.vector_batch.should == ['pin_cycle:1100','pin_cycle:repeat2,1000','pin_cycle:tset1,1000']
+    Origen.target.temporary = -> { VecTestDUT.new; OrigenLink::Test::VectorBased.new('localhost', 12_777) }
+    Origen.target.load!
+    tester.message = ''
+    tester.set_timeset('func_25mhz', 40)
+    tester.pinmap = 'tck, 5, tdo, 8, tms, 10, tdi, 15'
+    tester.pintiming = 'func_25mhz, tdi, 0, tdo, 1, tms, 0'
+    tester.message = ''
+    dut.pins(:tck).drive(1)
+    dut.pins(:tdo).drive(1)
+    dut.pins(:tms).drive(0)
+    dut.pins(:tdi).drive!(0)
+    tester.microcodestr = ''
+    tester.cycle
+    tester.test_response = 'P:repeat2,1100'
+    tester.flush_vector
+    tester.vector_batch.should == ['pin_cycle:tset1,repeat2,1100']
   end
   
   # TODO: Add tests to check capture and comment batching alignment with batched vectors

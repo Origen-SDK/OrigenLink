@@ -6,41 +6,48 @@ require 'origen_link/configuration_commands'
 require 'origen_link/callback_handlers'
 module OrigenLink
   # OrigenLink::VectorBased
-  #   This class is meant to be used for live silicon debug.  Vector data that Origen
+  #   This class describes the OrigenLink app plug-in.  Vector data that Origen
   #   generates is intercepted and sent to a debug device (typically will be a Udoo
   #   Neo - www.udoo.org).  The debug device can be any device that is able to serve
   #   a TCP socket, recieve and interpret the command set used by this class and send
   #   the expected responses.
   #
-  # Integration instructions
-  #   Set the pin map (must be done first) and pin order
-  #     if tester.link?
-  #        tester.pinmap = 'tclk,26,tms,19,tdi,16,tdo,23'
-  #        tester.pinorder = 'tclk,tms,tdi,tdo'
-  #     end
-  #
-  #   Set Origen to only generate vectors for pins in the pinmap (order should match)
-  #        pin_pattern_order :tclk, :tms, :tdi, :tdo, only: true if tester.link?
-  #
-  #   At the beginning of the Startup method add this line
-  #      tester.initialize_pattern if tester.link?
-  #
-  #   At the end of the Shutdown method add this line
-  #     tester.finalize_pattern if tester.link?
-  #
-  #   Create a link environment with the IP address and socket number of a link server
-  #     $tester = OrigenLink::VectorBased.new('192.168.0.2', 12777)
   class VectorBased
     include OrigenTesters::VectorBasedTester
     include ServerCom
     include CaptureSupport
     include ConfigurationCommands
 
-    # these attributes are exposed for testing purposes, a user would not need to read them
-    attr_reader :fail_count, :vector_count, :total_comm_time, :total_connect_time, :total_xmit_time
-    attr_reader :total_recv_time, :total_packets, :vector_repeatcount, :tsets_programmed, :captured_data
-    attr_reader :vector_batch, :store_pins_batch, :comment_batch
-    attr_reader :user_name, :initial_comm_sent
+    # The number of cycles that fail
+    attr_reader :fail_count
+    # The number of vector cycles generated
+    attr_reader :vector_count
+    # The accumulated total time spent communicating with the server
+    attr_reader :total_comm_time
+    # The accumulated total time spent establishing the server connection
+    attr_reader :total_connect_time
+    # The accumulated total time spent transmitting to the server app
+    attr_reader :total_xmit_time
+    # The accumulated total time spent receiving from the server app
+    attr_reader :total_recv_time
+    # The accumulated total number of packets sent to the server
+    attr_reader :total_packets
+    # The accumulated number of times push_vector was called with the present tset and pin info
+    attr_reader :vector_repeatcount
+    # The look up of programmed tsets.  Names are converted to a unique number identifier
+    attr_reader :tsets_programmed
+    # Data captured using tester.capture
+    attr_reader :captured_data
+    # Array of vectors waiting to be sent to the sever
+    attr_reader :vector_batch
+    # Used with capture
+    attr_reader :store_pins_batch
+    # Array of comments received through push_comment
+    attr_reader :comment_batch
+    # The name of the user running OrigenLink
+    attr_reader :user_name
+    # Indicates that communication has been initiated with the server
+    attr_reader :initial_comm_sent
 
     def initialize(address, port, options = {})
       @address = address
@@ -58,6 +65,7 @@ module OrigenLink
       @max_packet_time = 0
       @max_receive_time = 0
       @tsets_programmed = {}
+      @tsets_warned = {}
       @tset_count = 1
       @store_pins = []
       @captured_data = []
@@ -72,7 +80,22 @@ module OrigenLink
       @pattern_comments = {}
       @user_name = Etc.getlogin
       @initial_comm_sent = false
+      @initial_vector_pushed = false
       @pinorder = ''
+      @pinmap_hash = {}
+      @batched_setup_cmds = []
+
+      # check the server version against the plug-in version
+      response = send_cmd('version', '')
+      response = 'Error' if response.nil?	# prevent run time error in regression tests
+      response.chomp!
+      server_version = response.split(':')[1]
+      server_version = '?.?.? - 0.2.0 or earlier' if response =~ /Error/
+      app_version = Origen.app(:origen_link).version
+      Origen.log.info("Plug-in link version: #{app_version}, Server link version: #{server_version}")
+      unless app_version == server_version
+        Origen.log.warn('Server version and plug-in link versions do not match')
+      end
     end
 
     # push_comment
@@ -93,9 +116,83 @@ module OrigenLink
       end
     end
 
+    # ordered_pins(options = {})
+    #   expand pin groups to their component pins after the pin ordering is completed
+    #   OrigenLink always operates on individual pins.  This saves other methods
+    #   from each needing to handle pins and/or groups of pins.
+    def ordered_pins(options = {})
+      result = super
+      groups = []
+      result.each { |p| groups << p if p.size > 1 }
+      groups.each do |group|
+        # locate this group in the result array
+        i = result.index(group)
+        result.delete_at(i)
+        dut.pins(group.id).map.each do |sub_pin|
+          result.insert(i, sub_pin)
+          i += 1
+        end
+      end
+
+      if @pinmap.nil?
+        # create the pinmap if pin metadata was provided
+        pinarr = []
+        result.each do |pin|
+          if pin.meta.key?(:link_io)
+            pinarr << pin.name.to_s
+            pinarr << pin.meta[:link_io].to_s
+          end
+        end
+        self.pinmap = pinarr.join(',') unless pinarr.size == 0
+      end
+
+      result
+    end
+
+    # fix_ordered_pins(options)
+    #   This method is called the first time push_vector is called.
+    #
+    #   This method will create the pinmap from pin meta data if needed.
+    #
+    #   This method will remove any pin data that doesn't correspond
+    #   to a pin in the link pinmap and remove those pins from the
+    #   @ordered_pins_cache to prevent them from being rendered
+    #   on the next cycle.
+    #   This will prevent unwanted behavior.  The link server
+    #   expects only pin data for pins in the pinmap.
+    def fix_ordered_pins(options)
+      # remove non-mapped pins from the ordered pins cache - prevents them appearing in future push_vector calls
+      orig_size = @ordered_pins_cache.size
+      @ordered_pins_cache.delete_if { |p| !@pinmap_hash[p.name.to_s] }
+      Origen.log.debug('OrigenLink removed non-mapped pins from the cached pin order array') unless orig_size == @ordered_pins_cache.size
+      # update pin values for the current  push_vector call
+      vals = []
+      @ordered_pins_cache.each { |p| vals << p.to_vector }
+      options[:pin_vals] = vals.join('')
+      options
+    end
+
     # push_vector
     #   This method intercepts vector data from Origen, removes white spaces and compresses repeats
     def push_vector(options)
+      unless @initial_vector_pushed
+        if @pinmap.nil?
+          Origen.log.error('OrigenLink: pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
+        else
+          Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
+        end
+
+        # remove pins not in the link pinmap
+        options = fix_ordered_pins(options)
+
+        # now send any configuration commands that were saved prior to pinmap setup (clears all server configs)
+        @batched_setup_cmds.each do |cmd|
+          response = send_cmd(cmd[0], cmd[1])
+          setup_cmd_response_logger(cmd[0], response)
+        end
+
+        @initial_vector_pushed = true
+      end
       set_pinorder if @pinorder == ''
       programmed_data = options[:pin_vals].gsub(/\s+/, '')
       unless options[:timeset]
@@ -128,9 +225,6 @@ module OrigenLink
     # flush_vector
     #   Just as the name suggests, this method "flushes" a vector.  This is necessary because
     #   of repeat compression (a vector isn't sent until different vector data is encountered)
-    #
-    #   Don't forget to flush when you're in debug mode.  Otherwise, the last vector of a
-    #   write command won't be sent to the server.
     def flush_vector(programmed_data = '', tset = '')
       # prevent server crash when vector_flush is used during debug
       unless @previous_vectordata == ''
@@ -142,7 +236,15 @@ module OrigenLink
         if @tsets_programmed[@previous_tset]
           tset_prefix = "tset#{@tsets_programmed[@previous_tset]},"
         else
-          tset_prefix = ''
+          # The hash of programmed tsets does not contain this tset
+          # Check the timing api to see if there is timing info there
+          # and send the timing info to the link server
+          if dut.respond_to?(:timeset)
+            tset_prefix = process_timeset(tset)
+          else
+            tset_warning(tset)
+            tset_prefix = ''
+          end
         end
 
         if @batch_vectors
@@ -235,9 +337,11 @@ module OrigenLink
 
       vector_cycles.each do |cycle|
         thiscyclefail = false
+        bad_pin_data = false
         if pfstatus == 'F'
           # check to see if this cycle failed
           0.upto(cycle.length - 1) do |index|
+            bad_pin_data = true if (cycle[index] == 'W')
             thiscyclefail = true if (cycle[index] == 'H') && (expected_msg[expected_msg.length - cycle.length + index] == 'L')
             thiscyclefail = true if (cycle[index] == 'L') && (expected_msg[expected_msg.length - cycle.length + index] == 'H')
           end
@@ -248,6 +352,10 @@ module OrigenLink
         else
           expected_msg_prnt = ''
           prepend = 'P:'
+        end
+        if bad_pin_data
+          expected_msg_prnt = ' ' + 'W indicates no operation, check timeset definition'
+          prepend = 'F:'
         end
 
         if output_obj.nil?
@@ -265,8 +373,8 @@ module OrigenLink
     end
 
     # initialize_pattern
-    #   This method sets initializes variables at the start of a pattern.
-    #   it is called automatically when pattern generation starts.
+    #   This method initializes variables at the start of a pattern.
+    #   It is called automatically when pattern generation starts.
     def initialize_pattern
       @fail_count = 0
       @vector_count = 0
@@ -282,11 +390,12 @@ module OrigenLink
       @total_xmit_time = 0
       @total_recv_time = 0
 
-      if @pinmap.nil?
-        Origen.log.error('pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
-      else
-        Origen.log.debug('executing pattern with pinmap:' + @pinmap.to_s)
-      end
+      # moved to push_vector to allow auto-pinmap
+      # if @pinmap.nil?
+      #   Origen.log.error('OrigenLink: pinmap has not been setup, use tester.pinmap= to initialize a pinmap')
+      # else
+      #   Origen.log.debug('OrigenLink: executing pattern with pinmap:' + @pinmap.to_s)
+      # end
     end
 
     # finalize_pattern
@@ -329,11 +438,9 @@ module OrigenLink
     end
 
     # to_s
-    #   returns 'Origen::VectorBased'
+    #   returns 'OrigenLink::VectorBased'
     #
-    #   This method at the moment is used for implementing code that runs only if the
-    #   environment is set to link vector based.  tester.link? will be used once the testers
-    #   plug in supports the method link?.
+    #   No longer a use for this.  Use tester.link?
     def to_s
       'OrigenLink::VectorBased'
     end
@@ -343,11 +450,10 @@ module OrigenLink
     #   true = pass
     #   false = fail
     #
-    # TODO: capture transaction vector data and response for use in debug
-    #
-    # if !tester.transaction {dut.reg blah blah}
-    #   puts 'transaction failed'
-    # end
+    # @example
+    #   if !tester.transaction {dut.reg blah blah}
+    #     puts 'transaction failed'
+    #   end
     def transaction
       if block_given?
         synchronize

@@ -1,15 +1,18 @@
 #!/usr/bin/env ruby
 $LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), '..', 'lib'))
+$LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), '..', 'config'))
 require 'socket'
 require 'origen_link/server/sequencer'
+require 'version'
 
 server = TCPServer.open('', 12_777)
-puts 'server started'
 pinsequencer = OrigenLink::Server::Sequencer.new
+pinsequencer.version = OrigenLink::VERSION
 remoteuser = ''
 remotehost = ''
 sessionactivity = Time.now
 sessionactive = false
+puts "server version #{pinsequencer.version} started"
 
 loop do
   client = server.accept

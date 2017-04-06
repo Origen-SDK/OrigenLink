@@ -15,10 +15,10 @@ module OrigenLink
           invalid_pin_number_test:	false,
           missing_pinmap_test:		   false
         }.merge(options)
-        add_pin :tclk
-        add_pin :tdi
-        add_pin :tdo
-        add_pin :tms
+        add_pin :tclk, meta: { link_io: 119 }
+        add_pin :tdi, meta: { link_io: 116 }
+        add_pin :tdo, meta: { link_io: 124 }
+        add_pin :tms, meta: { link_io: 6 }
         add_pin :resetb
         add_pins :port_a, size: 8
 
@@ -31,7 +31,7 @@ module OrigenLink
           else
             tester.pinmap = 'tclk,119,tms,6,tdi,116,tdo,124' unless options[:missing_pinmap_test]
           end
-          tester.pinorder = 'tclk,tms,tdi,tdo'
+          # tester.pinorder = 'tclk,tms,tdi,tdo'
         end
       end
 

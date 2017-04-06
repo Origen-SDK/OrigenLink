@@ -4,22 +4,409 @@
 %# formatting like this, but in most cases that is not required.
 <h1><%= Origen.app.namespace %> <span style="font-size: 14px">(<%= Origen.app.version %>)</span></h1>
 
-### Purpose
+# Purpose
 
-This is a plug-in for Origen that enables live silicon debug directly from origen source.
+This is a plug-in for Origen that enables live silicon debug directly from origen source.  There are 2 parts to OrigenLink, the plug-in and the server.  Setup for each is documented separately.  The OrigenLink server is capable of being shared by multiple people working on the same project.  It will lock out other users during your debug or pattern execution session.
 
-### How To Use
+# Plug-in
 
-Add the following line to your application's GEMFILE:
+Instructions for integrating and using the plug-in with your app.
 
-* gem 'origen_link'
+## How To Import
 
-Add the following line to your application:
+* Add the following line to your application's GEMFILE:
 
-* require 'origen_link'
+~~~ruby
+ gem 'origen_link'
+~~~
 
-### How To Setup the Application Environment
 
-Describe how a user would setup a new workspace for this application...
+* Add a link environment (./environment/link.rb).  See server setup section for more information:
+
+~~~ruby
+# Note that the field for providing the computer name or IP address is a string
+OrigenLink::VectorBased.new('<ServerComputerName -- or IP_Address>', 12777)
+~~~
+
+
+* Select link as your environment to run a pattern over the link connection when the origen generate command is run:
+
+~~~
+origen e environment/link.rb
+origen g pattern/my_pattern.rb
+~~~ 
+
+
+## How To Configure
+
+Before OrigenLink can be used the physical pin map and timing must be setup.  There are 2 supported ways of doing this.  The high-level setup method allows OrigenLink to determine how to configure the server side pin sequencer.  The high-level setup method is highly recommended.  For cases where the high-level setup is not functioning correctly, legacy apps, or if you just enjoy doing things the hard way, a legacy low-level api is available.  Both will be described here.
+
+### How To Configure - High-Level Method (Preferred)
+
+This is the recomended way to setup OrigenLink in your application.
+
+#### Physical Pin Map
+
+OrigenLink needs to tell the server application which physical IO pin on the UDOO device (see UDOO-Neo GPIO documentation) corresponds to which DUT pin in your app.  The number after 'gpio_' is what OrigenLink needs.  This IO number is passed to OrigenLink through pin meta data.
+
+~~~ruby
+add_pin :tclk, meta: {link_io: 8}
+add_pin :tdi, meta: {link_io: 146}
+~~~
+
+#### Timing
+
+OrigenLink emulates a tester sequencer through software.  The timing it implemtents will not be precise.  Setting the drive edge of tdi to 5ns and tclk to 20ns will not result in tclk being driven 15ns after tdi.  What will happen, though, is the sequencer will drive tdi first, followed by tclk.  It is recommended that you use the built in Origen API for setting timing.
+
+~~~ruby
+  # Configure timing for jtag communication with RL tclk
+  tester.set_timeset('api_tst', 40)
+  dut.timeset :api_tst do |t|
+    t.drive_wave :tclk do |w|
+      w.drive :data, at: 10
+      w.drive 0, at: 30
+    end
+    t.drive_wave :tdi, :tms, :tdo do |w|
+      w.drive :data, at: 5
+    end
+    t.compare_wave do |w|
+      w.compare :data, at: 25
+    end
+  end
+~~~
+
+#### Finished
+
+Start your OrigenLink server (see server setup section), connect your DUT to the server device and off you go.
+
+### How To Configure - Low-Level Legacy API (Skip Reading This Section)
+
+The prefered configuration method is above.  These methods for configuring the server application are supported for legacy applications.  This method is more prone to producing hard to debug errors during setup of a new app.
+
+#### Low-Level Physical Pin Map Setup
+
+Create a comma separated list of pin_name and IO# and pass it to the tester.  The .pinmap method will clear all server settings.  So, this should be done first.  The pin name string provided to the pinmap must exactly match the pin name string provided to the pin timing and pin order methods.  Any typo may result strange behavior (pin operation not occuring, timing error messages, and/or server crash).  No cause for alarm, just be sure to check for consistent names if you get those problems.
+
+~~~ruby
+  tester.pinmap = 'tclk,119,tms,6,tdi,116,tdo,124'
+~~~
+
+#### Low-Level Pattern Pin Order Setup
+
+Pins that don't have an assiciated physical IO will not have their pin data transmitted to the link server.  Create a comma separated list of the pins that are linked (only include pins that are in the pinmap) in the order that they appear in the pattern.  Using this command is not needed unless you used the low-level pin map setup command AND your dut.pins(:pin_name) doesn't match the pin name that you setup using 'tester.pinmap ='.
+
+~~~ruby
+  pin_pattern_order :tclk, :tms, :tdi, :tdo	# This sets the order of the pins in the pattern
+
+  # order given below must match order in pin_pattern_order
+  # names used below must match names used in tester.pinmap=
+  # the below example will cause issues because of a typo: 'tck' versus 'tclk' (tester.pinmap = 'tclk,119,)
+  tester.pinorder = 'tck,tms,tdi,tdo'		# This tells the server what order the pins are in the pattern
+~~~
+
+#### Low-Level Timing Setup
+
+~~~ruby
+    # pinformat=
+    #   This method is used to setup the pin clock format on the debugger device.
+    #   The supported formats are rl and rh
+    #
+    #   example:
+    #     tester.pinformat = 'func_25mhz,tclk,rl'
+
+    # pintiming=
+    #   This method is used to setup the pin timing on the debugger device.
+    #   Timing is relative to the rise and fall of a clock
+    #
+    #   timing value:         0   1   2
+    #   clock waveform:      ___/***\___
+    #
+    #   example:
+    #     tester.pintiming = 'func_25mhz,tms,0,tdi,0,tdo,1'
+
+~~~
+
+### Debugging Your App
+
+What follows are some pointers for using OrigenLink to debug your app (or pattern).  Run the origen pattern generation command with debug enabled and set a break point in your code to interactively debug.
+
+~~~
+origen g pattern/my_pattern.rb -d
+~~~
+
+~~~ruby
+  # inside pattern/my_pattern.rb
+
+  dut.reg(:MyReg).write!(my_value)
+
+  # stop after updating this register to observe device state
+  debugger	# generation of the pattern will pause here
+~~~
+
+#### Debugging Pin Map
+
+There are pin methods available to aid debug of an OrigenLink setup.
+
+~~~
+  # Cause a pin to continuously toggle every 2 seconds
+  (debugger prompt): dut.pin(:tdi).hello
+  
+  # Stop the pin from toggling
+  (debugger prompt): dut.pin(:tdi).goodbye
+~~~
+
+#### Staying Synchronized
+
+For efficiency vectors that are generated by your app are compressed and stored until the pattern generation is completed.  This means that when execution reaches a 'debugger' statement the previously generated vectors may not have been sent to the server yet.  There are a handful of ways to make this happen.
+
+* Use the tester.synchronize command from the debugger interface:
+
+~~~
+  # one time synchronize
+  (debugger prompt): tester.synchronize
+
+  # tell debugger to evaluate the synchronize command every time it gets control
+  # will cause continuous synchronization
+  (debugger prompt): disp tester.synchronize
+~~~
+
+* Use tester.transaction (makes the most sense to have this in your app's reg read/write methods).  Before the transaction method executes the code block provided it will perform a synchronization.  Then, the code in the block is executed (which generates new vectors) and a second synchronization is performed.  The transaction method returns a boolean indicating whether the vectors generated by the code block passed or failed.
+
+~~~ruby
+  result = tester.transaction { dut.jtag.shift_xx (yy) }
+  if tester.link?
+    # result = true if the code in the provided block passed
+  end
+~~~
+
+#### Capturing DUT Information
+
+There are a few methods for observing the actual state of the DUT.
+
+* Capture using tester.capture
+
+~~~ruby
+  # example of capturing and programatically using information read from the DUT
+  ss "reading default ID"
+  dut.reg(:testreg).bits(31..0).store
+  default_id = tester.capture {dut.jtag.read_dr dut.reg(:testreg), size: 32 }
+  default_id_str = default_id[0].to_s(2)
+  default_id_str.reverse!
+  default_id = default_id_str.to_i(2)
+  puts '**************************************************'
+  puts 'Captured default ID through JTAG: 0x' + default_id.to_s(16)
+  puts '**************************************************'
+~~~
+
+* Capture using mem api
+
+This command will read the contents of memory from the DUT and display it.
+
+~~~
+  # example of mem api use
+  (debugger prompt): dut.mem(0x2000_0000).sync(3)
+  20000000: DEADBEEF
+  20000004: 200000D4
+  20000008: 1C000898
+  
+  (debugger prompt): dut.mem(0x2000_0000).write!(0x1234567)
+  (debugger prompt): dut.mem(0x2000_0000).sync(3)
+  20000000: 01234567
+  20000004: 200000D4
+  20000008: 1C000898
+~~~
+
+* reg.sync!
+
+This command will read the contents of the register from the DUT and display it by bit field.
+
+~~~
+  (debugger prompt): dut.reg(:MyReg).sync! 
+~~~
+
+#### When A Shared Server Session Isn't Properly Ended
+
+The server is able to handle multiple users.  Once a user connects to the server, it will only allow access from that same IP address and user name until the session has ended.  The session end command is transmitted when pattern generation is completed.  If a user fails to properly end their session (happens when you exit debug mode by typing 'q' instead of 'c'), the server application will continue to lock out access until the time out has expired (20 minutes).  Before terminating a running session, check with the user who started the session to make sure they aren't in the middle of debug (the user id and IP address will be displayed when you try to connect).  If the previous session needs to be manually terminated, this is how you do it (this should be a rare exception to the rule - it's bad manners to forcefully kill another user's session):
+
+~~~ruby
+# run this code to forcefully terminate a session
+require 'socket'
+
+TCPSocket.open('udooneo-computer-name', 12777) do |link|
+  link.puts("session_end\n\n")
+  while received = link.gets
+    puts received
+  end
+  link.puts("session_kill\n\n")
+  while received = link.gets
+    puts received
+  end
+end
+puts "unlocked the server"
+~~~
+
+------------------------------------------------------------------------------------------------------
+
+# Server
+
+This section describes how to setup a new IOT device to serve the OrigenLink pin sequencer.
+
+## Setting Up a New UDOO device
+
+Here are the steps to take to setup a new UDOO-Neo to run the OrigenLink server application.  These instructions are not intended to be exhaustive, but should be good enough to get you up and running.
+
+* Change the name of the computer to something unique (like udooneo-myname).  This name is the string that you will enter in your environment ruby file for your app.  Your computer running origen g pattern/my_pattern.rb and the UDOO should be attached to the same network (either through USB or ethernet)
+
+~~~
+prompt$> sudo nano /etc/hostname
+~~~
+
+~~~ruby
+# Note that the field for providing the computer name or IP address is a string
+OrigenLink::VectorBased.new('<ServerComputerName -- or IP_Address>', 12777)
+~~~
+
+* Disable the M4 core (allows access to all IO's from unix)
+
+~~~
+menu -> preferences -> Udoo web configuration -> Advanced settings
+~~~
+
+* Install ruby.  This is a decision point.  If you want to install the OrigenLink gem, the steps are a bit more complicated.
+
+** Option 1 (I want the gem): You need to install ruby 2.2.
+
+~~~
+prompt$> sudo apt-get ruby22
+~~~
+
+** Option 2 (I'm fine using git to pull down the server code)
+
+~~~
+# of course you're still welcomed to install a newer ruby version
+# the server will run just fine
+prompt$> sudo apt-get ruby
+~~~
+
+* Install the OrigenLink server.
+
+** Option 1 (if you installed ruby22 you can do this).  Install origen and origen_link gems.
+
+~~~
+# follow the instructions for installing origen at origen-sdk.org
+prompt$> sudo gem install origen
+prompt$> sudo gem install origen_link
+~~~
+
+** Option 2 (This is what I do)
+
+~~~
+prompt$> git clone https://github.com/Origen-SDK/OrigenLink.git
+
+# if you get SSL certificate errors do this and retry the clone command
+prompt$> git config --global http.sslverify false
+~~~
+
+## Starting the Server
+
+If you installed Ruby 2.x and Origen, run this command to start the server:
+
+~~~
+<command_prompt>$ start_link_server
+~~~
+
+If you chose to clone the OrigenLink project from github, navigate to the OrigenLink directory and type this command:
+
+~~~
+<command_prompt>$ bin/start_link_server
+~~~
+
+The server is now running
+
+## Physical Interconnect
+
+Keep the following things in mind when connecting the IO's of your UDOO Neo to a DUT
+
+* Ground is important.  As a rule of thumb, connect at least 2 ground wires between the UDOO and your DUT
+
+* Pay attention to pin levels.  The UDOO IO's are 3.3v.  If your device is not also 3.3v, the most reliable and convenient way to connect the IO's is by using a bi-directional (auto-direction sensing) level shifter.  This one works well and is easy to find (available on Amazon Prime at the writing of this document): TXB0108
+
+* An alternative method for shifting a voltage down is to use a diode and pullup resistor.  The anode gets connected to the higher voltage device.  The cathode is connected to the lower voltage device.  A 10K pullup resistor is connected from the cathode to the supply voltage for the lower voltage device.  --- A word of advice: This method is quick and easy.  But, you get a slow rise time which makes it a terrible way of shifting the level of a clock signal (like TCLK for JTAG or SPICLK for SPI).
+
+---
+
+# How It Works
+
+This section will explain the in's and out's of how the plug-in and server applications work and how they communicate.  This section is intended to aid developers who want to add or modify features.  More in depth information can be found in the api documentation.
+
+## Server Side App
+
+What follows is the structure of the server side app.
+
+### Pin IO
+
+Pin IO is accomplished by using the file objects exported by linux at \sys\class\gpio
+
+~~~
+<command_prompt>$ cd /sys/class/gpio
+
+# export the file objects for a pin
+<command_prompt>$ echo 20 > export
+
+# read the state of gpio20
+<command_prompt>$ cd gpio20
+<command_prompt>$ cat value
+
+# drive gpio20 to logic 1
+<command_prompt>$ echo out > direction
+<command_prompt>$ echo 1 > value
+
+# change gpio20 from output to input
+<command_prompt>$ echo in > direction
+~~~
+
+### Pin Class
+
+The server pin class implements IO interactions for a pin.  When the pin assign command creates a pin object, it exports the associated IO number and opens IO objects for the direction and value of that pin.  The IO objects are kept open until the pin is destroyed.  For more information see the api documentation.
+
+### Pin Sequencer
+
+The pin sequencer is the class that does all of the heavy lifting for the server side app.  It implements all of the command messages that begin with "pin_".  See the api documentation (Server::Sequencer) for more information.  Timing is perhaps the most complicated construct to understand:
+
+~~~ruby
+  # tset is a number that corresponds to a timeset name from origen ex: 1 corresponds to 'tp0'
+  # @cycletiming[tset] is a hash
+  # each timeset contains these keys: 
+  #    'events'               -  [array of timestamps for timing events]
+  #    'drive_event_data'     -  hash, the keys of the hash correspond to elements of 'events'
+  #                           -  each value in the hash is an array
+  #                           -  each element in the array is one of 3 values: 'data', '0', or '1'
+  #    'drive_event_pins'     -  hash, the keys of the hash correspond to elements of 'events'
+  #                           -  each value in the hash is an array
+  #                           -  each element in the array is an array of pin objects
+  #                           -  the drive event data will be performed for each pin object
+  #    'compare_event_data'   -  similar to drive_event_data, the only valid event data is 'data'
+  #    'compare_event_pins'     -  similar to drive_event_pins
+  
+  @cycletiming[tset] = {
+  ['events'] = [0, 5, 10, 35]
+  ['drive_event_data'] = {
+        0: ['data']
+       10: ['data','0']
+       35: ['0']
+      }
+  ['drive_event_pins'] = {
+        0: [[pin_obj1, pin_obj2]]
+       10: [[pin1,pin2], [pin3]]
+       35: [[pin4]]
+      }
+  }
+~~~
+
+The main message supported by the sequencer is 'pin_cycle'.  As the name implies, this message implements 1 or more cycles of vector data.  It will return the response of the dut to the plug-in side app along with pass/fail information.
+
+### Server
+
+The server serves a TCP socket at 12777.  No fancy gems are used for several reasons, the main one being simplicity.  Ruby has a built in socket library that is extremely simple to use.  Multiple messages from the plug-in side app can be received with a single connection.  "\n" indicates the end of a message.  "\n\n" indicates that the packet of messages has ended.  Why TCP and not UDP?  I know the web says that UDP socket communication is faster.  But, my testing indicated otherwise.  Plus, TCP is more reliable.
 
 % end
