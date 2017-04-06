@@ -122,9 +122,11 @@ module OrigenLink
     #   from each needing to handle pins and/or groups of pins.
     def ordered_pins(options = {})
       result = super
-      groups = {}
-      result.each_index { |i| groups[i] = result[i] if result[i].size > 1 }
-      groups.each_pair do |i, group|
+      groups = []
+      result.each { |p| groups << p if p.size > 1 }
+      groups.each do |group|
+        # locate this group in the result array
+        i = result.index(group)
         result.delete_at(i)
         dut.pins(group.id).map.each do |sub_pin|
           result.insert(i, sub_pin)
