@@ -91,7 +91,7 @@ module OrigenLink
       response.chomp!
       server_version = response.split(':')[1]
       server_version = '?.?.? - 0.2.0 or earlier' if response =~ /Error/
-      app_version = Origen.app(:origen_link).version
+      app_version = OrigenLink::VERSION # Origen.app(:origen_link).version
       Origen.log.info("Plug-in link version: #{app_version}, Server link version: #{server_version}")
       unless app_version == server_version
         Origen.log.warn('Server version and plug-in link versions do not match')
