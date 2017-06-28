@@ -98,6 +98,9 @@ describe OrigenLink::VectorBased do
     tester.vector_repeatcount.should == 2
     tester.cycle repeat: 20
     tester.vector_repeatcount.should == 22
+    dut.pins(:tdi).drive(1)
+    tester.cycle repeat: 500
+    tester.vector_repeatcount.should == 500
   end
 
   specify "check that repeat count is correctly sent" do
