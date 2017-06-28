@@ -202,16 +202,17 @@ module OrigenLink
         exit 1
       end
       tset = options[:timeset].name
+      local_repeat = options[:repeat].nil? ? 1 : options[:repeat]
       if @vector_count > 0
         # compressing repeats as we go
         if (programmed_data == @previous_vectordata) && (@previous_tset == tset) && @store_pins.empty?
-          @vector_repeatcount += 1
+          @vector_repeatcount += local_repeat
         else
           # all repeats of the previous vector have been counted
           # time to flush.  Don't panic though!  @previous_vectordata
           # is what gets flushed.  programmed_data is passed as an
           # arg to be set as the new @previous_vectordata
-          flush_vector(programmed_data, tset)
+          flush_vector(programmed_data, tset, local_repeat)
         end
       else
         # if this is the first vector of the pattern, insure variables are initialized
@@ -225,7 +226,7 @@ module OrigenLink
     # flush_vector
     #   Just as the name suggests, this method "flushes" a vector.  This is necessary because
     #   of repeat compression (a vector isn't sent until different vector data is encountered)
-    def flush_vector(programmed_data = '', tset = '')
+    def flush_vector(programmed_data = '', tset = '', local_repeat = 1)
       # prevent server crash when vector_flush is used during debug
       unless @previous_vectordata == ''
         if @vector_repeatcount > 1
@@ -261,7 +262,7 @@ module OrigenLink
         @store_pins = []
       end
 
-      @vector_repeatcount = 1
+      @vector_repeatcount = local_repeat
       @previous_vectordata = programmed_data
       @previous_tset = tset
     end
