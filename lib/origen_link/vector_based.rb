@@ -471,5 +471,42 @@ module OrigenLink
         true
       end
     end
+
+    # wait a fixed amount of time
+    #   This method will run the Sleep method to wait rather than generating cycles.
+    #   Cycle execution time is not predictable with OrigenLink.
+    #
+    #   This method currently doesn't handle match blocks.
+    def wait(options = {})
+      options = {
+        cycles:         0,
+        time_in_cycles: 0,
+        time_in_us:     0,
+        time_in_ns:     0,
+        time_in_ms:     0,
+        time_in_s:      0,
+        match:          false,   # Set to true to invoke a match loop where the supplied delay
+        apply_cycles:	  false
+        # will become the timeout duration
+      }.merge(options)
+
+      fail 'wait(match: true) is not yet implemented on Link' if options[:match]
+
+      time_delay = 0
+      time_delay += (options[:time_in_s])
+      time_delay += (options[:time_in_ms]) * 0.001
+      time_delay += (options[:time_in_us]) * 0.000001
+      time_delay += (options[:time_in_ns]) * 0.000000001
+      time_delay += (options[:cycles] + options[:time_in_cycles]) * current_period_in_ns * 0.000000001
+
+      if options[:apply_cycles]
+        cycles = time_delay / 0.00003		# cycle execution time is unpredictable, but ~= 30us
+        options[:repeat] = (cycles > 0) ? cycles : 1
+        cycle(options)
+      else
+        synchronize			# ensure all generated cycles are executed before delay is run
+        sleep time_delay
+      end
+    end
   end
 end
