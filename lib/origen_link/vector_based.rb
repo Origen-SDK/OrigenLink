@@ -504,7 +504,11 @@ module OrigenLink
 
       if options[:apply_cycles]
         cycles = time_delay / 0.00003		# cycle execution time is unpredictable, but ~= 30us
-        options[:repeat] = (cycles > 0) ? cycles : 1
+        if options[:cycles] > 0 || options[:time_in_cycles] > 0
+          options[:repeat] = options[:cycles] + options[:time_in_cycles]
+        else
+          options[:repeat] = (cycles > 0) ? cycles : 1
+        end
         cycle(options)
       else
         synchronize			# ensure all generated cycles are executed before delay is run
