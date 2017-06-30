@@ -93,6 +93,19 @@ describe OrigenLink::VectorBased do
     dut.pins(:tms).drive(0)
     dut.pins(:tdi).drive!(0)
     tester.microcodestr = ''
+    tester.test_response = 'P:repeat2,1100'
+    tester.vector_repeatcount.should == 1
+    tester.cycle
+    tester.vector_repeatcount.should == 2
+    tester.cycle repeat: 20
+    tester.vector_repeatcount.should == 22
+    dut.pins(:tdi).drive(1)
+    tester.cycle repeat: 500
+    tester.vector_repeatcount.should == 500
+    # this wait will first flush and synchronize so that all generated cycles are executed before the wait
+    tester.wait time_in_cycles: 2
+    tester.vector_repeatcount.should == 1
+    tester.cycle
     tester.vector_repeatcount.should == 1
     tester.cycle
     tester.vector_repeatcount.should == 2
