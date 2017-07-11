@@ -46,7 +46,7 @@ loop do
     while (message = client.gets) != "\n"
       # process the message
       # for now only pin_ messages are accepted
-      if message =~ /session_end/
+      if message =~ /session_end/ || message =~ /session_kill/
         sessionactive = false
         response = response + "session_end:session_end\n"
       else
@@ -60,6 +60,9 @@ loop do
     if checkmessage =~ /session_kill/
       sessionactive = false
       response = response + "Terminated: session from #{remoteuser} at IP address #{remotehost} inactive for #{Time.now - sessionactivity} seconds has been killed\n"
+      change_in_user = true unless (remoteuser.eql? thisuser) && (remotehost.eql? thisremotehost)
+      remoteuser = thisuser
+      remotehost = thisremotehost
     else
       response = response + "Busy: server is in use by #{remoteuser} from IP address #{remotehost}\n"
     end
