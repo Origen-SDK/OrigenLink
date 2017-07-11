@@ -262,15 +262,13 @@ The server is able to handle multiple users.  Once a user connects to the server
 If the previous session needs to be manually terminated, this is how you do it (this should be a rare exception to the rule - it's bad manners to forcefully kill another user's session):
 
 ~~~ruby
-# run this code to forcefully terminate a session
 require 'socket'
+require 'etc'
+
+user_name = Etc.getlogin
 
 TCPSocket.open('udooneo-computer-name', 12777) do |link|
-  link.puts("session_end\n\n")
-  while received = link.gets
-    puts received
-  end
-  link.puts("session_kill\n\n")
+  link.puts("#{user_name}\nsession_kill\n\n")
   while received = link.gets
     puts received
   end
