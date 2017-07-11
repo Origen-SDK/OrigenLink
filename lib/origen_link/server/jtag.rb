@@ -1,19 +1,13 @@
-require 'origen_link/server/pin'
+require_relative 'pin'
 
 module OrigenLink
   module Server
-    # The Jtag class is not part of the OrigenLink plug-in/server ecosystem.
-    # It implements standard jtag protocol.  It can be used to implement a
-    # Jtag protocol server (not included in this repository presently).
     class Jtag
-      # The value read from TDO during the shift
       attr_reader :tdoval
-      # Enable extra output
       attr_accessor :verbose_enable
       attr_accessor :anytdofail
 
-      # Create the jtag pin objects
-      def initialize(tdiio = 16, tdoio = 23, tmsio = 19, tckio = 26, tck_period = 0.000001)
+      def initialize(tdiio = 116, tdoio = 124, tmsio = 6, tckio = 119, tck_period = 0.000001)
         @tdipin = Pin.new(tdiio, :out)
         @tdopin = Pin.new(tdoio, :in)
         @tmspin = Pin.new(tmsio, :out)
@@ -23,14 +17,13 @@ module OrigenLink
         @tdostr = ''
         @verbose_enable = true
         @anytdofail = false
+        @pins = {}
       end
 
-      # not needed, no need for wait states between operations
       def tck_period=(value)
         @tck_half_period = value / 2
       end
 
-      # close out file IO objects for the pins
       def destroy
         @tdipin.destroy
         @tdopin.destroy
@@ -40,9 +33,9 @@ module OrigenLink
         @tdopin = nil
         @tmspin = nil
         @tckpin = nil
+        @pins.each_value do { |val| val.destroy }
       end
 
-      # perform 1 jtag cycle
       def do_cycle(tdival, tmsval, capturetdo = false)
         @tdipin.out(tdival)
         @tmspin.out(tmsval)
@@ -56,13 +49,11 @@ module OrigenLink
         @tckpin.out(0)
       end
 
-      # advance state machine to test logic reset, then return to run/test idle
       def do_tlr
         8.times { do_cycle(0, 1) }
         do_cycle(0, 0)
       end
 
-      # shift a value in on tdi, optionall capture tdo
       def do_shift(numbits, value, capturetdo = false, suppresscomments = false, tdocompare = '')
         @tdoval = 0
         @tdostr = ''
@@ -109,7 +100,6 @@ module OrigenLink
         end
       end
 
-      # perform an ir-update
       def do_ir(numbits, value, options = {})
         defaults = {
           capturetdo:	      false,
@@ -142,7 +132,6 @@ module OrigenLink
         do_cycle(0, 0)
       end
 
-      # perform a dr update
       def do_dr(numbits, value, options = {})
         defaults = {
           capturetdo:	      true,
@@ -173,7 +162,6 @@ module OrigenLink
         do_cycle(0, 0)
       end
 
-      # traverse the pause dr state
       def pause_dr
         do_cycle(0, 1)
         do_cycle(0, 0)
@@ -185,11 +173,103 @@ module OrigenLink
         do_cycle(0, 0)
       end
 
-      # traverse the pause ir state
       def pause_ir
         do_cycle(0, 1)
         pause_dr
       end
+
+      def read_adc(csl)
+        channel_list = csl.split(',')
+        response = ''
+        channel_list.each do |channel|
+          file_name = "/sys/bus/iio/devices/"
+          case channel
+            when 'A0'
+              file_name = file_name + "iio:device0/in_voltage0_raw"
+            when 'A1'
+              file_name = file_name + "iio:device0/in_voltage1_raw"
+            when 'A2'
+              file_name = file_name + "iio:device0/in_voltage2_raw"
+            when 'A3'
+              file_name = file_name + "iio:device0/in_voltage3_raw"
+            when 'A4'
+              file_name = file_name + "iio:device1/in_voltage0_raw"
+            when 'A5'
+              file_name = file_name + "iio:device1/in_voltage1_raw"
+          end
+          response = response + ',' unless response.size == 0
+          if File.exists?(file_name)
+            File.open(file_name, 'r') do |file|
+              reading = file.gets
+              response = response + reading.strip
+            end
+          else
+            response = response + '-1'
+          end
+        end
+        response
+      end
+
+      def processmessage(message)
+        message.strip!
+        split_message = message.split(':')
+        response = ''
+        case split_message[0]
+          when 'jtag_ir'
+            args = split_message[1].split(',')
+            do_ir(args[2].to_i, string_to_val(args[0], args[1]), capturetdo: true, suppresscomments: true)
+            response = @tdoval.to_s(16)
+          when 'jtag_dr'
+            args = split_message[1].split(',')
+            do_dr(args[2].to_i, string_to_val(args[0], args[1]), capturetdo: true, suppresscomments: true)
+            response = @tdoval.to_s(16)
+          when 'jtag_pause_dr'
+            pause_dr
+            response = 'done'
+          when 'jtag_pause_ir'
+            pause_ir
+            response = 'done'
+          when 'jtag_reset'
+            do_tlr
+            response = 'done'
+          when 'jtag_pin_set'
+            pinlist = split_message[1].split(',')
+            pinlist.each do |pin|
+              @pins[pin] = Pin.new(pin, :out) unless @pins.key?(pin)
+              @pins[pin].out(1)
+            end
+            response = 'done'
+          when 'jtag_pin_clear'
+            pinlist = split_message[1].split(',')
+            pinlist.each do |pin|
+              @pins[pin] = Pin.new(pin, :out) unless @pins.key?(pin)
+              @pins[pin].out(0)
+            end
+            response = 'done'
+          when 'jtag_pin_read'
+            pinlist = split_message[1].split(',')
+            pinlist.each do |pin|
+              @pins[pin] = Pin.new(pin, :in) unless @pins.key?(pin)
+              response = response + @pins[pin].in
+            end
+            response
+          when 'jtag_adc_read'
+            response = read_adc(split_message[1])
+            response
+        end
+      end
+
+      def string_to_val(base_indicator, numstr)
+        case base_indicator
+          when 'h'
+            numstr.to_i(16)
+          when 'd'
+            numstr.to_i(10)
+          when 'b'
+            numstr.to_i(2)
+        end
+      end
+
     end
   end
 end
