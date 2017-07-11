@@ -5,15 +5,26 @@ require 'socket'
 require 'origen_link/server/sequencer'
 require 'version'
 
+# General initialization
 server = TCPServer.open('', 12_777)
-pinsequencer = OrigenLink::Server::Sequencer.new
-pinsequencer.version = OrigenLink::VERSION
 remoteuser = ''
 remotehost = ''
 sessionactivity = Time.now
 sessionactive = false
 puts "server version #{pinsequencer.version} started"
 
+# Initialize the pin sequencer object
+pinsequencer = OrigenLink::Server::Sequencer.new
+pinsequencer.version = OrigenLink::VERSION
+
+# Set default values for the Jtag object
+tdiio = 116
+tdoio = 124
+tmsio = 6
+tckio = 119
+jtag_interpreter = nil
+
+# Wait for connection requests in an infinite loop
 loop do
   client = server.accept
   thisuser = client.gets.chomp
@@ -41,21 +52,26 @@ loop do
     response = "\n"
   end
   
+  # Now we're ready to process the actual message
   # if this connection is from the active user\host machine, then process the information
   if (remoteuser.eql? thisuser) && (remotehost.eql? thisremotehost)
     while (message = client.gets) != "\n"
       # process the message
-      # for now only pin_ messages are accepted
       if message =~ /session_end/ || message =~ /session_kill/
         sessionactive = false
         response = response + "session_end:session_end\n"
+      elsif message =~ /jtag_/
+        # jtag messages get routed to the jtag message handler
+        response = response + processjtagmessage(message.chomp) + "\n"
       else
+        # default is pin sequencer message handling
         sessionactive = true
         response = response + pinsequencer.processmessage(message.chomp) + "\n"
       end
     end
     sessionactivity = Time.now
   else
+    # The connection didn't come from the active user.  Only session_kill is allowed.
     checkmessage = client.gets.chomp
     if checkmessage =~ /session_kill/
       sessionactive = false
@@ -69,4 +85,30 @@ loop do
   end
   client.write(response)
   client.close
+end
+
+# method to handle the processing of a jtag message
+def processjtagmessage(message)
+  reply = 'Error'
+  if message =~ /jtag_configure:/
+    # Allow the default io numbers to be overridden
+    newios = message.gsub(/\s+/, '').split(':')[1].split(',')
+    if newios.size = 4
+      tdiio = newios[0]
+      tdoio = newios[1]
+      tmsio = newios[2]
+      tckio = newios[3]
+      reply = "jtag_configure: tdi = #{tdiio}, tdo = #{tdoio}, tms = #{tmsio}, tck = #{tckio}"
+    else
+      reply = 'jtag_configure failed, need 4 io numbers, tdi, tdo, tms, tck - in that order'
+    end
+  elsif message =~ /jtag_reinit/
+    jtag_interpreter.destroy unless jtag_interpreter.nil?
+    jtag_interpreter = OrigenLink::Server::Jtag.new(tdiio, tdoio, tmsio, tckio)
+    reply = 'done'
+  else
+    jtag_interpreter = OrigenLink::Server::Jtag.new(tdiio, tdoio, tmsio, tckio) if jtag_interpreter.nil?
+    reply = jtagport.processmessage(message)
+  end
+  reply
 end

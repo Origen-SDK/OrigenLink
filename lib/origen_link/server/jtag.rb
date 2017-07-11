@@ -1,4 +1,4 @@
-require_relative 'pin'
+require 'origen_link/server/pin'
 
 module OrigenLink
   module Server
@@ -7,21 +7,16 @@ module OrigenLink
       attr_accessor :verbose_enable
       attr_accessor :anytdofail
 
-      def initialize(tdiio = 116, tdoio = 124, tmsio = 6, tckio = 119, tck_period = 0.000001)
+      def initialize(tdiio = 116, tdoio = 124, tmsio = 6, tckio = 119)
         @tdipin = Pin.new(tdiio, :out)
         @tdopin = Pin.new(tdoio, :in)
         @tmspin = Pin.new(tmsio, :out)
         @tckpin = Pin.new(tckio, :out)
-        @tck_half_period = tck_period / 2
         @tdoval = 0
         @tdostr = ''
         @verbose_enable = true
         @anytdofail = false
         @pins = {}
-      end
-
-      def tck_period=(value)
-        @tck_half_period = value / 2
       end
 
       def destroy
@@ -33,7 +28,7 @@ module OrigenLink
         @tdopin = nil
         @tmspin = nil
         @tckpin = nil
-        @pins.each_value do { |val| val.destroy }
+        @pins.each_value(&:destroy)
       end
 
       def do_cycle(tdival, tmsval, capturetdo = false)
@@ -87,16 +82,6 @@ module OrigenLink
 
           tdovalstr = @tdoval.to_s(2)
           tdovalstr = '0' * (numbits - tdovalstr.length) + tdovalstr
-
-          if thiscomparefail
-            puts '****************************>>>>>>>>>>>>>>>>> TDO failure <<<<<<<<<<<<<<<<<<****************************'
-            puts 'expected: ' + tdocompare
-            puts 'received: ' + tdovalstr
-          else
-            puts 'TDO compare pass'
-            puts 'expected: ' + tdocompare
-            puts 'received: ' + tdovalstr
-          end
         end
       end
 
@@ -107,10 +92,6 @@ module OrigenLink
           tdocompare:	      ''
         }
         options = defaults.merge(options)
-
-        if !(options[:suppresscomments]) && @verbose_enable
-          puts "	shift IR, #{numbits} bits, value = 0x" + value.to_s(16)
-        end
 
         if options[:tdocompare] != ''
           capturetdo = true
@@ -139,9 +120,6 @@ module OrigenLink
           tdocompare:	      ''
         }
         options = defaults.merge(options)
-        if !(options[:suppresscomments]) && @verbose_enable
-          puts "	shift DR, #{numbits} bits, value = 0x" + value.to_s(16)
-        end
 
         if options[:tdocompare] != ''
           capturetdo = true
@@ -182,23 +160,23 @@ module OrigenLink
         channel_list = csl.split(',')
         response = ''
         channel_list.each do |channel|
-          file_name = "/sys/bus/iio/devices/"
+          file_name = '/sys/bus/iio/devices/'
           case channel
             when 'A0'
-              file_name = file_name + "iio:device0/in_voltage0_raw"
+              file_name = file_name + 'iio:device0/in_voltage0_raw'
             when 'A1'
-              file_name = file_name + "iio:device0/in_voltage1_raw"
+              file_name = file_name + 'iio:device0/in_voltage1_raw'
             when 'A2'
-              file_name = file_name + "iio:device0/in_voltage2_raw"
+              file_name = file_name + 'iio:device0/in_voltage2_raw'
             when 'A3'
-              file_name = file_name + "iio:device0/in_voltage3_raw"
+              file_name = file_name + 'iio:device0/in_voltage3_raw'
             when 'A4'
-              file_name = file_name + "iio:device1/in_voltage0_raw"
+              file_name = file_name + 'iio:device1/in_voltage0_raw'
             when 'A5'
-              file_name = file_name + "iio:device1/in_voltage1_raw"
+              file_name = file_name + 'iio:device1/in_voltage1_raw'
           end
           response = response + ',' unless response.size == 0
-          if File.exists?(file_name)
+          if File.exist?(file_name)
             File.open(file_name, 'r') do |file|
               reading = file.gets
               response = response + reading.strip
@@ -269,7 +247,6 @@ module OrigenLink
             numstr.to_i(2)
         end
       end
-
     end
   end
 end
