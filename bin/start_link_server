@@ -11,11 +11,11 @@ remoteuser = ''
 remotehost = ''
 sessionactivity = Time.now
 sessionactive = false
-puts "server version #{pinsequencer.version} started"
 
 # Initialize the pin sequencer object
 pinsequencer = OrigenLink::Server::Sequencer.new
 pinsequencer.version = OrigenLink::VERSION
+puts "server version #{pinsequencer.version} started"
 
 # Set default values for the Jtag object
 tdiio = 116
