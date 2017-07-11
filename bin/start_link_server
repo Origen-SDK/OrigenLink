@@ -3,7 +3,34 @@ $LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), '..', 'li
 $LOAD_PATH.unshift(File.join(File.expand_path(File.dirname(__FILE__)), '..', 'config'))
 require 'socket'
 require 'origen_link/server/sequencer'
+require 'origen_link/server/jtag'
 require 'version'
+
+# method to handle the processing of a jtag message
+def processjtagmessage(message)
+  reply = 'Error'
+  if message =~ /jtag_configure:/
+    # Allow the default io numbers to be overridden
+    newios = message.gsub(/\s+/, '').split(':')[1].split(',')
+    if newios.size = 4
+      $tdiio = newios[0]
+      $tdoio = newios[1]
+      $tmsio = newios[2]
+      $tckio = newios[3]
+      reply = "jtag_configure: tdi = #{$tdiio}, tdo = #{$tdoio}, tms = #{$tmsio}, tck = #{$tckio}"
+    else
+      reply = 'jtag_configure failed, need 4 io numbers, tdi, tdo, tms, tck - in that order'
+    end
+  elsif message =~ /jtag_reinit/
+    $jtag_interpreter.destroy unless $jtag_interpreter.nil?
+    $jtag_interpreter = OrigenLink::Server::Jtag.new($tdiio, $tdoio, $tmsio, $tckio)
+    reply = 'done'
+  else
+    $jtag_interpreter = OrigenLink::Server::Jtag.new($tdiio, $tdoio, $tmsio, $tckio) if $jtag_interpreter.nil?
+    reply = $jtag_interpreter.processmessage(message)
+  end
+  reply
+end
 
 # General initialization
 server = TCPServer.open('', 12_777)
@@ -18,11 +45,11 @@ pinsequencer.version = OrigenLink::VERSION
 puts "server version #{pinsequencer.version} started"
 
 # Set default values for the Jtag object
-tdiio = 116
-tdoio = 124
-tmsio = 6
-tckio = 119
-jtag_interpreter = nil
+$tdiio = 116
+$tdoio = 124
+$tmsio = 6
+$tckio = 119
+$jtag_interpreter = nil
 
 # Wait for connection requests in an infinite loop
 loop do
@@ -62,6 +89,7 @@ loop do
         response = response + "session_end:session_end\n"
       elsif message =~ /jtag_/
         # jtag messages get routed to the jtag message handler
+        sessionactive = true
         response = response + processjtagmessage(message.chomp) + "\n"
       else
         # default is pin sequencer message handling
@@ -85,30 +113,4 @@ loop do
   end
   client.write(response)
   client.close
-end
-
-# method to handle the processing of a jtag message
-def processjtagmessage(message)
-  reply = 'Error'
-  if message =~ /jtag_configure:/
-    # Allow the default io numbers to be overridden
-    newios = message.gsub(/\s+/, '').split(':')[1].split(',')
-    if newios.size = 4
-      tdiio = newios[0]
-      tdoio = newios[1]
-      tmsio = newios[2]
-      tckio = newios[3]
-      reply = "jtag_configure: tdi = #{tdiio}, tdo = #{tdoio}, tms = #{tmsio}, tck = #{tckio}"
-    else
-      reply = 'jtag_configure failed, need 4 io numbers, tdi, tdo, tms, tck - in that order'
-    end
-  elsif message =~ /jtag_reinit/
-    jtag_interpreter.destroy unless jtag_interpreter.nil?
-    jtag_interpreter = OrigenLink::Server::Jtag.new(tdiio, tdoio, tmsio, tckio)
-    reply = 'done'
-  else
-    jtag_interpreter = OrigenLink::Server::Jtag.new(tdiio, tdoio, tmsio, tckio) if jtag_interpreter.nil?
-    reply = jtagport.processmessage(message)
-  end
-  reply
 end

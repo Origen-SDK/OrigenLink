@@ -34,9 +34,8 @@ module OrigenLink
       def do_cycle(tdival, tmsval, capturetdo = false)
         @tdipin.out(tdival)
         @tmspin.out(tmsval)
-        sleep @tck_half_period
+
         @tckpin.out(1)
-        sleep @tck_half_period
 
         if capturetdo
           @tdostr = @tdopin.in + @tdostr
