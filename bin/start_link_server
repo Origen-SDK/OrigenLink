@@ -87,7 +87,7 @@ loop do
       if message =~ /session_end/ || message =~ /session_kill/
         sessionactive = false
         response = response + "session_end:session_end\n"
-      elsif message =~ /jtag_/
+      elsif message[0,5] == 'jtag_'
         # jtag messages get routed to the jtag message handler
         sessionactive = true
         response = response + processjtagmessage(message.chomp) + "\n"
