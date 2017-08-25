@@ -310,7 +310,7 @@ menu -> preferences -> Udoo web configuration -> Advanced settings
 ** Option 1 (I want the gem): You need to install ruby 2.2.
 
 ~~~
-prompt$> sudo apt-get ruby22
+prompt$> sudo apt-get install ruby22
 ~~~
 
 ** Option 2 (I'm fine using git to pull down the server code)
@@ -318,7 +318,7 @@ prompt$> sudo apt-get ruby22
 ~~~
 # of course you're still welcomed to install a newer ruby version
 # the server will run just fine
-prompt$> sudo apt-get ruby
+prompt$> sudo apt-get install ruby
 ~~~
 
 ##### Install the OrigenLink server.
@@ -355,6 +355,12 @@ If you chose to clone the OrigenLink project from github, navigate to the Origen
 ~~~
 
 The server is now running
+
+To have the server started automatically when the UDOO boots add the following line to the end of ~/.profile (note replace the path with your path):
+
+~~~
+lxterminal -e "/home/udooer/RubyCode/OrigenLink/bin/start_link_server"
+~~~
 
 ## Physical Interconnect
 
