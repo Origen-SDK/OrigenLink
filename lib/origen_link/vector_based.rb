@@ -19,7 +19,7 @@ module OrigenLink
     include ConfigurationCommands
 
     # The number of cycles that fail
-    attr_reader :fail_count
+    attr_accessor :fail_count
     # The number of vector cycles generated
     attr_reader :vector_count
     # The accumulated total time spent communicating with the server
