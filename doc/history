@@ -1,3 +1,13 @@
+<a class="anchor release_tag" name="v0_4_1"></a>
+<h1><a href="#v0_4_1">Tag: v0.4.1</a></h1>
+
+##### Branch: 'master'
+
+##### by pderouen on 16-Nov-2017 14:08PM
+
+
+made fail\_count accessor so apps can increment the fail count
+
 <a class="anchor release_tag" name="v0_4_0"></a>
 <h1><a href="#v0_4_0">Tag: v0.4.0</a></h1>
 
