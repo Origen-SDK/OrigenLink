@@ -98,6 +98,11 @@ module OrigenLink
       end
     end
 
+    # warn but don't fail if an api for another tester is not implmented
+    def method_missing(m, *args, &block)
+      Origen.log.warn "#{m} is not implemented by origen_link and will be ignored"
+    end
+    
     # push_comment
     #   This method intercepts comments so they can be correctly placed in the output file
     #   when vector batching is used
