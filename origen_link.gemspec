@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   # Add any gems that your plugin needs to run within a host application
-  spec.add_runtime_dependency 'origen', '>= 0.7.2'
-  spec.add_runtime_dependency 'origen_testers', '>= 0.9.3'
+  spec.add_runtime_dependency 'origen', '>= 0.12.0'
+  spec.add_runtime_dependency 'origen_testers', '>= 0.13.2'
   spec.add_runtime_dependency 'sinatra', '~> 1', '>= 1.4.7'
 end
