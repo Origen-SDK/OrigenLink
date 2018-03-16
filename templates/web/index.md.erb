@@ -276,11 +276,30 @@ end
 puts "unlocked the server"
 ~~~
 
-------------------------------------------------------------------------------------------------------
+---
 
 # Server
 
 This section describes how to setup a new IOT device to serve the OrigenLink pin sequencer.
+
+## UDOO NEO Shopping list
+
+These items will be needed:
+
+* [UDOO NEO](www.udoo.org) - The UDOO NEO Full is recommended (WiFi & Ethernet built in)
+* 8GB micro SD card
+* Micro USB to USB cable
+
+These items are optional, but likely helpful:
+
+* Bread board (solderless prototyping board)
+* Prototyping wires (male to male, male to female, female to female)
+* 300 ohm resistors (for current limiting)
+* 10K ohm resistors (for pull up)
+* Diodes (for constructing cheap 1 way level shifter)
+* Level shifters (required if shifting down a clock signal - TXS0108E is easy to use)
+* Power adapter (if you plan to connect through a network instead of USB) - old cell phone micro USB charger or 12v 3amp DC supply
+* 3D printed case.  The bottom half of [this](https://www.thingiverse.com/thing:1191832) design has worked well.
 
 ## Setting Up a New UDOO device
 
