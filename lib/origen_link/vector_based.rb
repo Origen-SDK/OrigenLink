@@ -516,6 +516,8 @@ module OrigenLink
         end
         cycle(options)
       else
+        # ensure at least 1 cycle is generated so that pin changes always get applied before the wait
+        cycle
         synchronize			# ensure all generated cycles are executed before delay is run
         sleep time_delay
       end
