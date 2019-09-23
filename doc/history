@@ -1,3 +1,14 @@
+<a class="anchor release_tag" name="v0_4_4"></a>
+<h1><a href="#v0_4_4">Tag: v0.4.4</a></h1>
+
+##### Branch: 'master'
+
+##### by Paul DeRouen on 23-Sep-2019 14:41PM
+
+
+fixes a bug with timing interpretation, previously timing didn't get applied when
+synchronize/flush is called from tester.wait
+
 <a class="anchor release_tag" name="v0_4_3"></a>
 <h1><a href="#v0_4_3">Tag: v0.4.3</a></h1>
 
