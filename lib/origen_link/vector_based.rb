@@ -245,6 +245,7 @@ module OrigenLink
           # The hash of programmed tsets does not contain this tset
           # Check the timing api to see if there is timing info there
           # and send the timing info to the link server
+          tset = @previous_tset if tset == ''
           if dut.respond_to?(:timeset)
             tset_prefix = process_timeset(tset)
           else
